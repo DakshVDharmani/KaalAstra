@@ -147,3 +147,11 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+/datasets/raw/
+/datasets/processed/
+/datasets/evaluation/
+/datasets/training/
+/datasets/kaalastra-kaggle-sft.zip
+__pycache__/
+*.pyc
+/.kaalastra/

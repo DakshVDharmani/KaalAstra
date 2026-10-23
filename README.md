@@ -6,6 +6,8 @@
 
 An AI-powered, developer-first security extension for Visual Studio Code, envisioned to detect vulnerabilities, expose malicious dependencies, trace attack paths, and help developers secure applications before threats reach production.
 
+The standalone [security run graph](FRONTEND/security-graph/README.md) generates a compact, directly readable `.graph` text flow from the last pushed GitHub commit to the workspace after fixes. It shows frontend/backend break, fix, and verification steps; the extension and model integration can supply findings later.
+
 ---
 
 ## 🌑 The Dark Age of Code
@@ -244,3 +246,20 @@ License to be determined.
 *When code enters its darkest age, a weapon awakens.*
 
 **October went dark. KAALASTRA awakened.**
+
+## Security data foundation
+
+KAALASTRA's dataset work is built on published vulnerability research and real security fixes, with provenance, deduplication, and separate evaluation data recorded from the start. The following sources are downloaded locally; dataset artifacts are excluded from Git.
+
+| Dataset | Role in this project | Local status |
+| --- | --- | --- |
+| [DeltaSecommits](https://huggingface.co/datasets/rufimelo/DeltaSecommits) | Real vulnerable/fixed code pairs across languages; 2,290 filtered candidates | Downloaded and preprocessed |
+| [PrimeVul](https://github.com/DLVulDet/PrimeVul) | Research-grade C/C++ vulnerable/fixed pairs and benign examples; 3,737 filtered training pairs plus 54,430 strictly isolated full-split candidates | Downloaded and preprocessed |
+| [Patchwork CVE](https://github.com/TayR-D/patchwork-cve) | CVE, CWE, repository, and fix metadata; 15,904 non-refused records indexed | Downloaded; metadata only |
+| [SVEN](https://github.com/eth-sri/sven) | Security evaluation fixtures, kept outside training | Downloaded and isolated |
+
+The [dataset manifest](datasets/manifests/downloads.json) records exact files, sizes, hashes, and source links. The [dataset preparation notes](datasets/README.md) explain filtering and usage limits. Dataset acquisition is a foundation for model development; performance claims will be made only after reproducible held-out evaluation.
+
+### Ready-to-run Kaggle pilot
+
+The prepared fine-tuning package has **5,997 training**, **504 validation**, and **985 held-out test** security-review examples, with projects, exact code, and vulnerability IDs isolated across splits. A [Kaggle notebook](notebooks/kaalastra_nemotron_kaggle.ipynb) and [step-by-step training guide](docs/KAGGLE_TRAINING.md) run a 4-bit LoRA pilot for NVIDIA Nemotron, record the model revision and hashes, and support a base-versus-adapter held-out comparison. No fine-tuning or model benchmark has run yet.
