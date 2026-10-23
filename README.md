@@ -6,6 +6,8 @@
 
 An AI-powered, developer-first security extension for Visual Studio Code, envisioned to detect vulnerabilities, expose malicious dependencies, trace attack paths, and help developers secure applications before threats reach production.
 
+The standalone [security run graph](FRONTEND/security-graph/README.md) generates a compact, directly readable `.graph` text flow from the last pushed GitHub commit to the workspace after fixes. It shows frontend/backend break, fix, and verification steps; the extension and model integration can supply findings later.
+
 ---
 
 ## 🌑 The Dark Age of Code

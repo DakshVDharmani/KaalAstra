@@ -154,3 +154,4 @@ vite.config.ts.timestamp-*
 /datasets/kaalastra-kaggle-sft.zip
 __pycache__/
 *.pyc
+/.kaalastra/

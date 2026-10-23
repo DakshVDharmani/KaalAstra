@@ -1,0 +1,25 @@
+EXAMPLE ONLY - NOT A REAL SCAN
+KAALASTRA  /  SECURITY RUN GRAPH
+────────────────────────────────────────────────────────────────────────
+BEFORE  [GitHub push: main @ 8d36c74a8b50]
+   │
+   ├──→ [FRONTEND]  1 changed file
+   │     [BREAK 1] Session token stored in localStorage
+   │         file: frontend/login.tsx
+   │            ↓
+   │     [FIX] Move session to HttpOnly cookie
+   │            ↓
+   │     [WORKING · VERIFIED] Session integration test passed
+   │
+   └──→ [BACKEND]  1 changed file
+         [BREAK 1] Ownership check missing
+             file: backend/auth.py
+                ↓
+         [FIX] Add ownership check
+                ↓
+         [FIX REPORTED · VERIFY]
+    
+   ↓
+AFTER   [Current workspace after fixes]
+────────────────────────────────────────────────────────────────────────
+WORKING means a fix and external verification were supplied; model claims alone do not verify a fix.
