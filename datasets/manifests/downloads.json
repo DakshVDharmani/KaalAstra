@@ -1,0 +1,72 @@
+[
+  {
+    "source": "DeltaSecommits",
+    "url": "https://huggingface.co/datasets/rufimelo/DeltaSecommits/resolve/main/data/train-00000-of-00001.parquet",
+    "source_page": "https://huggingface.co/datasets/rufimelo/DeltaSecommits",
+    "license": "MIT (dataset card)",
+    "path": "datasets/raw/DeltaSecommits_train.parquet",
+    "bytes": 5280192,
+    "sha256": "6fcc767d5da18c31dad4c9850338fc51c6f0956d2d983bba1d68c83e29d45f16",
+    "status": "downloaded"
+  },
+  {
+    "source": "patchwork-cve v1.0",
+    "url": "https://github.com/TayR-D/patchwork-cve/releases/download/v1.0/patchwork-cve.jsonl.gz",
+    "source_page": "https://github.com/TayR-D/patchwork-cve",
+    "license": "CC-BY-4.0; publisher notes downstream Google model-output use restrictions",
+    "path": "datasets/raw/patchwork-cve_patchwork-cve.jsonl.gz",
+    "bytes": 28077695,
+    "sha256": "fd69e39690bcffe7a9a3cdc7171502d1235a195ff42750a45a1e44f61a6b2bd5",
+    "status": "downloaded"
+  },
+  {
+    "source": "PrimeVul full training split (public mirror of authors' release)",
+    "url": "https://huggingface.co/datasets/colin/PrimeVul/resolve/main/primevul_train.jsonl",
+    "source_page": "https://github.com/DLVulDet/PrimeVul",
+    "license": "MIT for PrimeVul repository; underlying project code retains upstream licenses",
+    "path": "datasets/raw/primevul/train_full.jsonl",
+    "bytes": 470918175,
+    "sha256": "5cadee7f3383124cc26ef6e67c8dd76c321e5461c94bef399a2f03a28767e6f5",
+    "status": "downloaded"
+  },
+  {
+    "source": "PrimeVul paired train split",
+    "url": "https://huggingface.co/datasets/colin/PrimeVul/resolve/main/primevul_train_paired.jsonl",
+    "source_page": "https://github.com/DLVulDet/PrimeVul",
+    "license": "MIT for PrimeVul repository; underlying project code retains upstream licenses",
+    "path": "datasets/raw/primevul/train_paired.jsonl",
+    "bytes": 52560540,
+    "sha256": "1b2853c09ac10b5b60d8e995cbf4461b65414dcf90e0cc5086b788caeae1aaaa",
+    "status": "downloaded"
+  },
+  {
+    "source": "PrimeVul paired validation split",
+    "url": "https://huggingface.co/datasets/colin/PrimeVul/resolve/main/primevul_valid_paired.jsonl",
+    "source_page": "https://github.com/DLVulDet/PrimeVul",
+    "license": "MIT for PrimeVul repository; underlying project code retains upstream licenses",
+    "path": "datasets/raw/primevul/valid_paired.jsonl",
+    "bytes": 5655335,
+    "sha256": "14516b7168e8d158e1e9fbeb163b655dd704eafd82c734e86cddc84c564b4285",
+    "status": "downloaded"
+  },
+  {
+    "source": "PrimeVul paired test split",
+    "url": "https://huggingface.co/datasets/colin/PrimeVul/resolve/main/primevul_test_paired.jsonl",
+    "source_page": "https://github.com/DLVulDet/PrimeVul",
+    "license": "MIT for PrimeVul repository; underlying project code retains upstream licenses",
+    "path": "datasets/raw/primevul/test_paired.jsonl",
+    "bytes": 6033298,
+    "sha256": "384758c25142b640f1768bb0d334c43f315c580022ae94973c66e77128fb3821",
+    "status": "downloaded"
+  },
+  {
+    "source": "SVEN evaluation benchmark",
+    "url": "https://github.com/eth-sri/sven/archive/refs/heads/master.zip",
+    "source_page": "https://github.com/eth-sri/sven",
+    "license": "MIT for SVEN repository",
+    "path": "datasets/evaluation/sven-master.zip",
+    "bytes": 77022195,
+    "sha256": "b9d1f7979bcabce739f21522e6ab4a9288d7f287a13500ec157039ed89240e3b",
+    "status": "downloaded"
+  }
+]

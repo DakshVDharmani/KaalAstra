@@ -244,3 +244,16 @@ License to be determined.
 *When code enters its darkest age, a weapon awakens.*
 
 **October went dark. KAALASTRA awakened.**
+
+## Security data foundation
+
+KAALASTRA's dataset work is built on published vulnerability research and real security fixes, with provenance, deduplication, and separate evaluation data recorded from the start. The following sources are downloaded locally; dataset artifacts are excluded from Git.
+
+| Dataset | Role in this project | Local status |
+| --- | --- | --- |
+| [DeltaSecommits](https://huggingface.co/datasets/rufimelo/DeltaSecommits) | Real vulnerable/fixed code pairs across languages; 2,290 filtered candidates | Downloaded and preprocessed |
+| [PrimeVul](https://github.com/DLVulDet/PrimeVul) | Research-grade C/C++ vulnerable/fixed pairs and benign examples; 3,737 filtered training pairs plus 54,430 strictly isolated full-split candidates | Downloaded and preprocessed |
+| [Patchwork CVE](https://github.com/TayR-D/patchwork-cve) | CVE, CWE, repository, and fix metadata; 15,904 non-refused records indexed | Downloaded; metadata only |
+| [SVEN](https://github.com/eth-sri/sven) | Security evaluation fixtures, kept outside training | Downloaded and isolated |
+
+The [dataset manifest](datasets/manifests/downloads.json) records exact files, sizes, hashes, and source links. The [dataset preparation notes](datasets/README.md) explain filtering and usage limits. Dataset acquisition is a foundation for model development; performance claims will be made only after reproducible held-out evaluation.

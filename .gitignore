@@ -147,3 +147,8 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+/datasets/raw/
+/datasets/processed/
+/datasets/evaluation/
+__pycache__/
+*.pyc
