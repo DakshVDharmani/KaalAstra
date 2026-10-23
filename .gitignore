@@ -150,5 +150,7 @@ vite.config.ts.timestamp-*
 /datasets/raw/
 /datasets/processed/
 /datasets/evaluation/
+/datasets/training/
+/datasets/kaalastra-kaggle-sft.zip
 __pycache__/
 *.pyc

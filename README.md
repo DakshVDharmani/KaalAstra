@@ -257,3 +257,7 @@ KAALASTRA's dataset work is built on published vulnerability research and real s
 | [SVEN](https://github.com/eth-sri/sven) | Security evaluation fixtures, kept outside training | Downloaded and isolated |
 
 The [dataset manifest](datasets/manifests/downloads.json) records exact files, sizes, hashes, and source links. The [dataset preparation notes](datasets/README.md) explain filtering and usage limits. Dataset acquisition is a foundation for model development; performance claims will be made only after reproducible held-out evaluation.
+
+### Ready-to-run Kaggle pilot
+
+The prepared fine-tuning package has **5,997 training**, **504 validation**, and **985 held-out test** security-review examples, with projects, exact code, and vulnerability IDs isolated across splits. A [Kaggle notebook](notebooks/kaalastra_nemotron_kaggle.ipynb) and [step-by-step training guide](docs/KAGGLE_TRAINING.md) run a 4-bit LoRA pilot for NVIDIA Nemotron, record the model revision and hashes, and support a base-versus-adapter held-out comparison. No fine-tuning or model benchmark has run yet.

@@ -13,3 +13,5 @@ PrimeVul's full train file adds benign examples for false-positive reduction. `p
 [SVEN](https://github.com/eth-sri/sven) is downloaded into `evaluation/` and its `data_eval` fixtures are extracted with `python scripts/prepare_sven.py`. It is reserved for evaluation only.
 
 The remaining named sources have not yet been downloaded. [CVEfixes](https://github.com/secureIT-project/CVEfixes) publishes its data separately on Zenodo as a relational database; [MoreFixes](https://zenodo.org/records/20776007) offers a 16 GB PostgreSQL database plus patches. Those larger archives were deferred to keep acquisition bounded.
+
+`python scripts/make_sft.py` creates the final source-labeled prompt/completion files in `training/`. It uses DeltaSecommits and PrimeVul code labels, excludes projects and vulnerability IDs seen in held-out data, and removes exact-code duplicates across splits. Patchwork's generated analysis and SVEN fixtures do not enter these files. `python scripts/package_kaggle.py` creates a 5.2 MB private Kaggle upload ZIP; see [the full Kaggle guide](../docs/KAGGLE_TRAINING.md).
