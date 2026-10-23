@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch KaalAstra Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "${workspaceFolder}/../../demo-target"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/dist/**/*.js"
+      ],
+      "preLaunchTask": "npm: compile"
+    }
+  ]
+}
+
