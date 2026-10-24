@@ -57,6 +57,18 @@ body {
   gap: 6px;
 }
 
+.agent-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0;
+  font-size: 11px;
+}
+
+.agent-controls select { min-width: 90px; }
+.agent-controls #codingAgentStatus { opacity: 0.8; overflow-wrap: anywhere; }
+
 /* Buttons */
 .btn {
   display: inline-flex;

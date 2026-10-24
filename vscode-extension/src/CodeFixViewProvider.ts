@@ -4,6 +4,7 @@ import { execFile } from 'child_process';
 import { KaalAstraFixItem, ScanResult, GitCommitItem } from './types';
 import { WorkspaceDecorationManager } from './decorations';
 import { SecurityGraphEditorPanel } from './SecurityGraphEditorPanel';
+import { CodingAgent, defaultModels } from './CodingAgent';
 
 export class CodeFixViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'kaalastra.sidebarView';
@@ -11,8 +12,11 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
   private _currentScan?: ScanResult;
   private _isScanning = false;
   private _decorations = new WorkspaceDecorationManager();
+  private readonly _codingAgent: CodingAgent;
 
-  constructor(private readonly _extensionUri: vscode.Uri) {}
+  constructor(private readonly _extensionUri: vscode.Uri, context: vscode.ExtensionContext) {
+    this._codingAgent = new CodingAgent(context);
+  }
 
   public getCurrentScan(): ScanResult | undefined {
     return this._currentScan;
@@ -34,7 +38,11 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.onDidReceiveMessage(async (message) => {
       switch (message.command) {
-        case 'webviewReady':
+        case 'webviewReady': {
+          await this.postAgentStatus();
+          await this.scanRepository(message.baseline || false, message.commitRef || 'HEAD', message.engine || 'hybrid');
+          break;
+        }
         case 'scanActiveCommit': {
           await this.scanRepository(
             message.baseline || false,
@@ -55,12 +63,33 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
         }
 
         case 'applyFix': {
-          await this.applySingleFix(message.fixId);
+          await this.proposeSingleFix(message.fixId);
           break;
         }
 
         case 'applyAllFixes': {
           await this.applyAllFixes();
+          break;
+        }
+        case 'selectCodingAgent': {
+          try {
+            await this._codingAgent.selectProvider(message.provider);
+            await this.postAgentStatus();
+          } catch (error: any) {
+            vscode.window.showErrorMessage(error.message);
+          }
+          break;
+        }
+        case 'setCodingKey': {
+          const provider = this._codingAgent.provider;
+          const key = await vscode.window.showInputBox({ prompt: `Enter ${provider} API key`, password: true, ignoreFocusOut: true });
+          if (key) await this._codingAgent.setKey(provider, key);
+          await this.postAgentStatus();
+          break;
+        }
+        case 'clearCodingKey': {
+          await this._codingAgent.clearKey(this._codingAgent.provider);
+          await this.postAgentStatus();
           break;
         }
 
@@ -161,7 +190,7 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
       args.push('--baseline');
     }
     args.push('--engine', engine);
-    args.push('--json');
+    args.push('--json', '--no-verify');
 
     try {
       execFile('python', args, { cwd: projectRoot, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
@@ -218,13 +247,13 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
               filePath: f.affected_file || f.patch_file || '',
               fileName: path.basename(f.affected_file || f.patch_file || ''),
               line: lineNum,
-              originalCode: originalCode || '// Unverified external invocation',
-              fixedCode: fixedCode || '// Strict caller authorization check',
+              originalCode,
+              fixedCode,
               explanation: f.proposed_remediation || '',
               blindspot: f.why_diff_only_misses_this || '',
               cwe: f.cwe || 'CWE-306',
-              verified: data.verification?.status === 'VERIFIED',
-              patchDiff: diff
+              verified: false,
+              patchDiff: ''
             });
           }
 
@@ -251,7 +280,7 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
             lifecycleGraph: lifecycleGraph,
             gitCommits: gitCommits,
             fixes: fixes,
-            verificationStatus: data.verification?.status || 'VERIFIED'
+            verificationStatus: 'NOT_VERIFIED'
           };
 
           this._currentScan = scanResult;
@@ -474,9 +503,9 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
           file: f.filePath,
           severity: (f.severity || 'high').toLowerCase(),
           before: f.description || f.title || 'Vulnerability introduced',
-          fix: f.explanation || 'Applied verified authorization check',
-          statusAfter: 'fixed',
-          verification: allFixed ? 'npm test: 10/10 unit tests passed' : ''
+          fix: f.explanation || 'Remediation proposed',
+          statusAfter: allFixed ? 'changed' : 'pending',
+          verification: ''
         }));
 
         const snapshot = {
@@ -521,137 +550,6 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  public async applySingleFix(fixId: string) {
-    if (!this._currentScan) return;
-    const fix = this._currentScan.fixes.find((f) => f.id === fixId);
-    if (!fix) return;
-
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders) return;
-    const root = workspaceFolders[0].uri.fsPath;
-    const fs = require('fs');
-
-    // Resolve target file path
-    let fullPath = path.join(root, fix.filePath);
-    if (!fs.existsSync(fullPath)) fullPath = path.join(root, 'demo-target', fix.filePath);
-    if (!fs.existsSync(fullPath)) fullPath = path.join(path.dirname(this._extensionUri.fsPath), 'demo-target', fix.filePath);
-    if (!fs.existsSync(fullPath)) fullPath = path.join(path.dirname(path.dirname(this._extensionUri.fsPath)), 'demo-target', fix.filePath);
-
-    if (!fs.existsSync(fullPath)) {
-      vscode.window.showErrorMessage(`Cannot locate file to patch: ${fix.filePath}`);
-      return;
-    }
-
-    let applied = false;
-
-    // Method 1: Try applying git unified diff if patchDiff is present
-    if (fix.patchDiff) {
-      try {
-        const repoDir = path.dirname(path.dirname(fullPath));
-        const tempPatch = path.join(require('os').tmpdir(), `kaalastra_${Date.now()}.patch`);
-        fs.writeFileSync(tempPatch, fix.patchDiff, 'utf8');
-
-        const { execFileSync } = require('child_process');
-        try {
-          execFileSync('git', ['apply', tempPatch], { cwd: repoDir, stdio: 'pipe' });
-          applied = true;
-        } catch {
-          // git apply failed, fallback to direct text replacement
-        } finally {
-          if (fs.existsSync(tempPatch)) fs.unlinkSync(tempPatch);
-        }
-      } catch {
-        // fallback
-      }
-    }
-
-    // Method 2: Direct WorkspaceEdit replacement
-    if (!applied && fix.originalCode && fix.fixedCode) {
-      try {
-        const doc = await vscode.workspace.openTextDocument(fullPath);
-        const text = doc.getText();
-        const orig = fix.originalCode.trim();
-        const repl = fix.fixedCode.trim();
-
-        if (text.includes(orig)) {
-          const startIdx = text.indexOf(orig);
-          const posStart = doc.positionAt(startIdx);
-          const posEnd = doc.positionAt(startIdx + orig.length);
-
-          const edit = new vscode.WorkspaceEdit();
-          edit.replace(doc.uri, new vscode.Range(posStart, posEnd), repl);
-          applied = await vscode.workspace.applyEdit(edit);
-          if (applied) {
-            await doc.save();
-          }
-        }
-      } catch {
-        // fallback
-      }
-    }
-
-    // Method 3: Deterministic fallback based on target file logic
-    if (!applied) {
-      try {
-        const doc = await vscode.workspace.openTextDocument(fullPath);
-        const text = doc.getText();
-
-        if (fullPath.endsWith('paymentService.js') && text.includes('function refundTransaction')) {
-          const patchedText = text.replace(
-            /function refundTransaction\(transactionId, user, amount\) \{[\s\S]*?return \{/,
-            `function refundTransaction(transactionId, user, amount) {\n  // Verified Fix: Enforce caller authentication & authorization\n  if (!user || (user.role !== 'admin' && user.id !== 'system_webhook')) {\n    throw new Error('Unauthorized refund attempt: caller must have admin privileges');\n  }\n  return {`
-          );
-          const edit = new vscode.WorkspaceEdit();
-          const fullRange = new vscode.Range(doc.positionAt(0), doc.positionAt(text.length));
-          edit.replace(doc.uri, fullRange, patchedText);
-          applied = await vscode.workspace.applyEdit(edit);
-          if (applied) await doc.save();
-        } else if (fullPath.endsWith('webhooks.js')) {
-          const patchedText = text.replace(
-            /router\.post\('\/stripe-callback', \(req, res\) => \{/,
-            `router.post('/stripe-callback', (req, res) => {\n  // Verified Fix: Validate webhook secret header\n  const webhookSecret = req.headers['x-webhook-secret'];\n  if (webhookSecret !== process.env.STRIPE_WEBHOOK_SECRET && webhookSecret !== 'whsec_test') {\n    return res.status(401).json({ error: 'Unauthorized webhook request' });\n  }`
-          );
-          const edit = new vscode.WorkspaceEdit();
-          const fullRange = new vscode.Range(doc.positionAt(0), doc.positionAt(text.length));
-          edit.replace(doc.uri, fullRange, patchedText);
-          applied = await vscode.workspace.applyEdit(edit);
-          if (applied) await doc.save();
-        }
-      } catch {
-        // failed
-      }
-    }
-
-    if (applied) {
-      const doc = await vscode.workspace.openTextDocument(fullPath);
-      await vscode.window.showTextDocument(doc);
-
-      vscode.window.showInformationMessage(`Applied verified fix to ${path.basename(fullPath)}!`);
-
-      // Update lifecycle graph to reflect WORKING Â· VERIFIED state
-      const targetDir = path.dirname(path.dirname(fullPath));
-      this._currentScan.lifecycleGraph = this._buildLifecycleGraph(
-        targetDir,
-        this._currentScan.commitHash || this._currentScan.shortHash || 'b186cfb7c072',
-        'main',
-        [fix.filePath],
-        [fix],
-        true
-      );
-
-      // Remove fixed issue from UI
-      this._currentScan.fixes = this._currentScan.fixes.filter((f) => f.id !== fixId);
-      this._currentScan.totalIssues = this._currentScan.fixes.length;
-
-      this._view?.webview.postMessage({
-        type: 'updateFixes',
-        data: this._currentScan
-      });
-    } else {
-      vscode.window.showErrorMessage(`Failed to automatically apply patch to ${path.basename(fullPath)}.`);
-    }
-  }
-
   public async applyAllFixes() {
     if (!this._currentScan || this._currentScan.fixes.length === 0) {
       vscode.window.showInformationMessage('No fixes to apply.');
@@ -659,7 +557,59 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
     }
 
     for (const fix of [...this._currentScan.fixes]) {
-      await this.applySingleFix(fix.id);
+      await this.proposeSingleFix(fix.id);
+    }
+  }
+
+  private async postAgentStatus() {
+    const provider = this._codingAgent.provider;
+    this._view?.webview.postMessage({
+      type: 'codingAgentStatus', provider,
+      hasKey: await this._codingAgent.hasKey(provider),
+      model: vscode.workspace.getConfiguration('kaalastra').get<string>(`codingModels.${provider}`) || defaultModels[provider]
+    });
+  }
+
+  private async proposeSingleFix(fixId: string): Promise<void> {
+    const fix = this._currentScan?.fixes.find(item => item.id === fixId);
+    const folder = vscode.workspace.workspaceFolders?.[0];
+    if (!fix || !folder) return;
+    const file = path.resolve(folder.uri.fsPath, fix.filePath);
+    const relative = path.relative(folder.uri.fsPath, file);
+    if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
+      vscode.window.showErrorMessage('Finding points outside the workspace.');
+      return;
+    }
+    try {
+      const document = await vscode.workspace.openTextDocument(file);
+      const original = document.getText();
+      if (original.length > 100_000) throw new Error('File is too large to send to the coding provider.');
+      const provider = this._codingAgent.provider;
+      const approved = await vscode.window.showInformationMessage(
+        `Send ${relative} and the security finding to ${provider} for a proposed fix?`,
+        { modal: true }, 'Send'
+      );
+      if (approved !== 'Send') return;
+      await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `${provider}: preparing security fix` }, async () => {
+        const proposal = await this._codingAgent.proposeEdit(relative, original, fix);
+        const proposedDoc = await vscode.workspace.openTextDocument({ content: proposal, language: document.languageId });
+        await vscode.commands.executeCommand('vscode.diff', document.uri, proposedDoc.uri, `KaalAstra: ${relative} (proposed ${provider} fix)`);
+        const decision = await vscode.window.showInformationMessage(
+          `Review the diff for ${relative}. Apply this proposed edit?`, { modal: true }, 'Apply Edit'
+        );
+        if (decision !== 'Apply Edit') return;
+        if (document.getText() !== original) throw new Error('File changed during review. Request a new proposal.');
+        const edit = new vscode.WorkspaceEdit();
+        edit.replace(document.uri, new vscode.Range(document.positionAt(0), document.positionAt(original.length)), proposal);
+        if (!await vscode.workspace.applyEdit(edit)) throw new Error('VS Code could not apply the edit.');
+        await document.save();
+        vscode.window.showInformationMessage(`Applied ${provider} proposal to ${relative}. Run tests and rescan before treating it as verified.`);
+        this._currentScan!.fixes = this._currentScan!.fixes.filter(item => item.id !== fixId);
+        this._currentScan!.totalIssues = this._currentScan!.fixes.length;
+        this._view?.webview.postMessage({ type: 'updateFixes', data: this._currentScan });
+      });
+    } catch (error: any) {
+      vscode.window.showErrorMessage(`Coding agent: ${error.message}`);
     }
   }
 
@@ -701,10 +651,20 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
           <button id="btnBaseline" class="btn btn-secondary" title="Run Diff-Only Baseline Review" style="font-size: 10px;">
             Baseline
           </button>
-          <button id="btnFixAll" class="btn btn-primary" title="Apply verified fixes">
-            Fix All
+          <button id="btnFixAll" class="btn btn-primary" title="Request and review a coding proposal for each finding">
+            Propose All
           </button>
         </div>
+      </div>
+
+      <div class="agent-controls">
+        <label for="codingAgent">Coding agent</label>
+        <select id="codingAgent" class="commit-select">
+          <option value="openai">OpenAI</option><option value="anthropic">Anthropic</option><option value="gemini">Gemini</option>
+        </select>
+        <button id="btnSetCodingKey" class="btn btn-secondary">Set API key</button>
+        <button id="btnClearCodingKey" class="btn btn-secondary">Clear</button>
+        <span id="codingAgentStatus">No key saved</span>
       </div>
 
       <!-- Commit Status Banner -->
@@ -750,8 +710,8 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
 
     <div id="emptyStateClean" class="empty-state hidden">
       <div class="empty-icon text-success">&#x2728;</div>
-      <h3>Repository Secure!</h3>
-      <p>No new regressions or authorization bypasses detected.</p>
+      <h3>No findings reported</h3>
+      <p>The current assessment reported no issues. This does not establish that the repository is secure.</p>
     </div>
 
     <!-- Tavily Research Panel -->

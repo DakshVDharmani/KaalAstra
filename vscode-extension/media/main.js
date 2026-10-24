@@ -13,7 +13,7 @@
   let gitCommits = [];
   let currentSubTab = 'lifecycle';
   let graphViewMode = 'visual'; // 'visual' or 'text'
-  let verificationStatus = 'VERIFIED';
+  let verificationStatus = 'NOT_VERIFIED';
   let currentSnapshot = {
     snippet: '',
     fileName: 'paymentService.js',
@@ -29,6 +29,11 @@
   const btnScan = document.getElementById('btnScan');
   const btnBaseline = document.getElementById('btnBaseline');
   const btnFixAll = document.getElementById('btnFixAll');
+  const codingAgentSelect = document.getElementById('codingAgent');
+  const codingAgentStatus = document.getElementById('codingAgentStatus');
+  document.getElementById('btnSetCodingKey')?.addEventListener('click', () => vscode.postMessage({ command: 'setCodingKey' }));
+  document.getElementById('btnClearCodingKey')?.addEventListener('click', () => vscode.postMessage({ command: 'clearCodingKey' }));
+  codingAgentSelect?.addEventListener('change', () => vscode.postMessage({ command: 'selectCodingAgent', provider: codingAgentSelect.value }));
   const btnCreateSample = document.getElementById('btnCreateSample');
   const btnSampleNoEditor = document.getElementById('btnSampleNoEditor');
   const emptyNoEditorEl = document.getElementById('emptyStateNoEditor');
@@ -302,6 +307,11 @@
     const message = event.data;
 
     switch (message.type) {
+      case 'codingAgentStatus': {
+        if (codingAgentSelect) codingAgentSelect.value = message.provider;
+        if (codingAgentStatus) codingAgentStatus.textContent = message.hasKey ? `Key saved · ${message.model}` : 'No key saved';
+        break;
+      }
       case 'scanningStatus': {
         if (activeFileNameEl) {
           activeFileNameEl.textContent = message.message;
@@ -342,7 +352,7 @@
         asciiTree = scan.asciiTree || '';
         lifecycleGraph = scan.lifecycleGraph || '';
         gitCommits = scan.gitCommits || [];
-        verificationStatus = scan.verificationStatus || 'VERIFIED';
+        verificationStatus = scan.verificationStatus || 'NOT_VERIFIED';
 
         // Populate commit selector dropdown
         if (commitSelector && gitCommits.length > 0) {
@@ -798,7 +808,7 @@
           <div class="n8n-node-footer">
             <span>id: ${n.id}</span>
             ${n.hasApply
-              ? `<button class="n8n-btn-action n8n-btn-apply" onclick="vscode.postMessage({ command: 'applyFix', fixId: '${n.fixId}' })">Apply Fix</button>`
+              ? `<button class="n8n-btn-action n8n-btn-apply" onclick="vscode.postMessage({ command: 'applyFix', fixId: '${n.fixId}' })">Propose Fix</button>`
               : `<button class="n8n-btn-action" onclick="vscode.postMessage({ command: 'previewLine', filePath: '${activeFinding.filePath}', line: ${activeFinding.line} })">Inspect</button>`
             }
           </div>
@@ -1347,7 +1357,7 @@
             📸 Ask Tavily
           </button>
           <button class="btn btn-primary btn-apply" data-id="${fix.id}">
-            Apply Fix
+            Propose Fix
           </button>
         </div>
       `;

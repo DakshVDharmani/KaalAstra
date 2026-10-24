@@ -87,7 +87,7 @@ def run_kaalastra_review(
 1. Examine if this commit introduces any security regression, authentication bypass, authorization gap, injection, or broken trust boundary.
 2. CRITICAL: Distinguish between what the diff appears to do in isolation vs. what happens when callers in the broader repository graph invoke the modified function.
 3. If an upstream caller calls the modified function with untrusted input without authentication or signature verification, explain the exact exploit path.
-4. For remediation: Propose a minimal, self-contained patch using ONLY the dependencies already present in the repository (Node.js built-ins like `crypto` or header checks like `x-webhook-secret` or re-introducing caller authorization in `refundTransaction`). DO NOT import uninstalled third-party packages like 'stripe' if they are not in package.json.
+4. For remediation: Describe the security requirement and a safe approach. Do not write code or a patch. A separately selected coding agent will propose file changes for user review.
 5. Output MUST be valid JSON adhering strictly to this JSON format:
 {
   "summary": "Concise 2-sentence executive summary of the review",
@@ -105,8 +105,8 @@ def run_kaalastra_review(
       "graph_evidence": "Explain how the code knowledge graph proved this vulnerability",
       "why_diff_only_misses_this": "Why a diff-only reviewer would miss this issue",
       "proposed_remediation": "Clear explanation of the fix",
-      "patch_file": "relative/path/to/file/to/patch.js",
-      "patch_unified_diff": "Exact git unified diff for the patch",
+      "patch_file": "",
+      "patch_unified_diff": "",
       "regression_test_summary": "Description of the regression test that catches this"
     }
   ]
@@ -158,8 +158,8 @@ Respond ONLY with the JSON object. Do not wrap with conversational filler.
             graph_evidence=f_data.get("graph_evidence", ""),
             why_diff_only_misses_this=f_data.get("why_diff_only_misses_this", ""),
             proposed_remediation=f_data.get("proposed_remediation", ""),
-            patch_file=f_data.get("patch_file", ""),
-            patch_unified_diff=f_data.get("patch_unified_diff", ""),
+            patch_file="",
+            patch_unified_diff="",
             regression_test_summary=f_data.get("regression_test_summary", "")
         ))
 

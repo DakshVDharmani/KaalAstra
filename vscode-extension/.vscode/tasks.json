@@ -3,8 +3,9 @@
   "tasks": [
     {
       "label": "npm: compile",
-      "type": "shell",
-      "command": "npm run compile",
+      "type": "process",
+      "command": "npm.cmd",
+      "args": ["run", "compile"],
       "group": {
         "kind": "build",
         "isDefault": true

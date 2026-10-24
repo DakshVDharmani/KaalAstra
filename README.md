@@ -28,6 +28,12 @@ That is the vision behind KAALASTRA.
 
 ## Security before every push
 
+### Coding agent workflow in the VS Code extension
+
+The Hybrid, FinSec AI, and Baseline controls select the security assessment mode. The separate **Coding agent** control chooses who proposes code changes: OpenAI, Anthropic, or Gemini. Select **Set API key** to save a key for the chosen provider in VS Code SecretStorage, or **Clear** to remove it. Keys are not stored in the workspace or sent to the sidebar webview. If needed, change the model through `kaalastra.codingModels.openai`, `kaalastra.codingModels.anthropic`, or `kaalastra.codingModels.gemini` in VS Code settings.
+
+After a scan, select **Propose Fix** on a finding or **Propose All**. The extension asks before sending the affected file and finding to the selected provider, shows the returned edit in a VS Code diff, and applies it only after you choose **Apply Edit**. Run tests and scan again before treating the change as verified. Hybrid and Baseline assessment still use the backend's `GEMINI_API_KEY`; the coding provider key is configured separately.
+
 **A security check belongs in the path to production, not on a backlog after release.** A single unsafe change can expose credentials, customer data, money, or a trusted communication channel. Review code, dependencies, and behavior before merging or deploying. Recheck after fixes and upgrades.
 
 This mission is personal to us. Members of our community at **Vishwakarma Institute of Technology (VIT), Pune** report that the Training and Placement Office email account was compromised and misused. We have not found a public incident report confirming the scope, method, or root cause. In particular, **there is no evidence here that a PHP vulnerability caused that incident**. One compromised identity can make harmful messages appear credible.

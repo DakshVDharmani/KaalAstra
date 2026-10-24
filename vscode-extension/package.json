@@ -17,6 +17,14 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "KaalAstra Coding Agent",
+      "properties": {
+        "kaalastra.codingModels.openai": { "type": "string", "default": "gpt-4.1", "description": "OpenAI model used for coding proposals." },
+        "kaalastra.codingModels.anthropic": { "type": "string", "default": "claude-sonnet-4-5", "description": "Anthropic model used for coding proposals." },
+        "kaalastra.codingModels.gemini": { "type": "string", "default": "gemini-2.5-pro", "description": "Gemini model used for coding proposals." }
+      }
+    },
     "viewsContainers": {
       "activitybar": [
         {
@@ -43,7 +51,7 @@
       },
       {
         "command": "kaalastra.applyAllFixes",
-        "title": "KaalAstra: Apply Verified Fixes",
+        "title": "KaalAstra: Propose Fixes with Coding Agent",
         "icon": "$(check-all)"
       },
       {

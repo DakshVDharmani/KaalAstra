@@ -3,8 +3,9 @@
   "tasks": [
     {
       "label": "npm: compile",
-      "type": "shell",
-      "command": "npm --prefix vscode-extension run compile",
+      "type": "process",
+      "command": "npm.cmd",
+      "args": ["--prefix", "vscode-extension", "run", "compile"],
       "group": {
         "kind": "build",
         "isDefault": true

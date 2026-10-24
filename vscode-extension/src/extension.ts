@@ -4,7 +4,7 @@ import { SecurityGraphEditorPanel } from './SecurityGraphEditorPanel';
 
 export function activate(context: vscode.ExtensionContext) {
   try {
-    const provider = new CodeFixViewProvider(context.extensionUri);
+    const provider = new CodeFixViewProvider(context.extensionUri, context);
 
     context.subscriptions.push(
       vscode.window.registerWebviewViewProvider(
