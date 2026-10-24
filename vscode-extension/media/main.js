@@ -14,6 +14,7 @@
   let currentSubTab = 'lifecycle';
   let graphViewMode = 'visual'; // 'visual' or 'text'
   let verificationStatus = 'NOT_VERIFIED';
+  let analysisSummary = '';
   let currentSnapshot = {
     snippet: '',
     fileName: 'paymentService.js',
@@ -157,14 +158,14 @@
   btnAnalyzeCommit?.addEventListener('click', () => {
     const selected = commitSelector ? commitSelector.value : 'HEAD';
     if (activeFileNameEl) activeFileNameEl.textContent = `Analyzing commit ${selected}...`;
-    vscode.postMessage({ command: 'scanActiveCommit', commitRef: selected, baseline: false });
+    vscode.postMessage({ command: 'scanActiveCommit', commitRef: selected, baseline: currentEngine === 'baseline', engine: currentEngine });
   });
 
   commitSelector?.addEventListener('change', () => {
     const selected = commitSelector ? commitSelector.value : 'HEAD';
     if (selected) {
       if (activeFileNameEl) activeFileNameEl.textContent = `Analyzing commit ${selected}...`;
-      vscode.postMessage({ command: 'scanActiveCommit', commitRef: selected, baseline: false });
+      vscode.postMessage({ command: 'scanActiveCommit', commitRef: selected, baseline: currentEngine === 'baseline', engine: currentEngine });
     }
   });
 
@@ -172,7 +173,6 @@
     vscode.postMessage({ command: 'openGraphFile' });
   });
 
-<<<<<<< HEAD
   document.getElementById('btnOpenWorkspaceGraph')?.addEventListener('click', () => {
     vscode.postMessage({ command: 'openGraphWorkspace' });
   });
@@ -180,8 +180,8 @@
   document.getElementById('btnOpenGraphWorkspace')?.addEventListener('click', () => {
     vscode.postMessage({ command: 'openGraphWorkspace' });
   });
-=======
-  // Engine Options Elements
+
+  // Engine options
   let currentEngine = 'hybrid';
   const btnOptHybrid = document.getElementById('btnOptHybrid');
   const btnOptFinSec = document.getElementById('btnOptFinSec');
@@ -190,7 +190,7 @@
 
   function setEngineMode(engine) {
     currentEngine = engine;
-    [btnOptHybrid, btnOptFinSec, btnOptBaseline].forEach((b) => b?.classList.remove('active'));
+    [btnOptHybrid, btnOptFinSec, btnOptBaseline].forEach((button) => button?.classList.remove('active'));
     if (engine === 'hybrid') {
       btnOptHybrid?.classList.add('active');
       if (engineStatusBanner) engineStatusBanner.innerHTML = 'Active: <b>Hybrid Sentinel</b> (AST + Graph + FinSec AI)';
@@ -213,7 +213,6 @@
   btnOptHybrid?.addEventListener('click', () => setEngineMode('hybrid'));
   btnOptFinSec?.addEventListener('click', () => setEngineMode('finsec'));
   btnOptBaseline?.addEventListener('click', () => setEngineMode('baseline'));
->>>>>>> ed5efe17af8f93fff0c7862664214085f12d3582
 
   // Action Buttons
   btnScan?.addEventListener('click', () => {
@@ -323,8 +322,8 @@
             fixListEl.innerHTML = `
               <div style="text-align: center; padding: 35px 12px; color: var(--vscode-foreground); opacity: 0.85;">
                 <div style="font-size: 22px; margin-bottom: 10px;">⚡</div>
-                <div style="font-size: 12px; font-weight: 600;">Analyzing commit with Code Knowledge Graph...</div>
-                <div style="font-size: 11px; opacity: 0.7; margin-top: 6px;">Tracing callers, checking Semgrep & querying Tavily</div>
+                <div style="font-size: 12px; font-weight: 600;">Running security analysis...</div>
+                <div style="font-size: 11px; opacity: 0.7; margin-top: 6px;">Checking the selected commit’s changes. Results appear as soon as review finishes.</div>
               </div>
             `;
           }
@@ -353,6 +352,9 @@
         lifecycleGraph = scan.lifecycleGraph || '';
         gitCommits = scan.gitCommits || [];
         verificationStatus = scan.verificationStatus || 'NOT_VERIFIED';
+        analysisSummary = scan.analysisSummary || '';
+        const cleanSummary = emptyCleanEl?.querySelector('p');
+        if (cleanSummary) cleanSummary.textContent = analysisSummary || 'The assessment reported no findings.';
 
         // Populate commit selector dropdown
         if (commitSelector && gitCommits.length > 0) {

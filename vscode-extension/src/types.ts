@@ -43,6 +43,7 @@ export interface ScanResult {
   message: string;
   totalIssues: number;
   graphSummary: string;
+  analysisSummary: string;
   asciiTree: string;
   subgraph?: any;
   lifecycleGraph?: string;

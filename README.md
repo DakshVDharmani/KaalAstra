@@ -8,6 +8,29 @@ An AI-powered, developer-first security extension for Visual Studio Code, envisi
 
 The standalone [security run graph](FRONTEND/security-graph/README.md) generates a compact, directly readable `.graph` text flow from the last pushed GitHub commit to the workspace after fixes. It shows frontend/backend break, fix, and verification steps; the extension and model integration can supply findings later.
 
+## 📸 Screenshot Capture with **Tavily**
+
+| Feature | How it works | Usage |
+|---------|--------------|-------|
+| **One‑click screenshot** of the current editor, selected code region, or the whole VS Code window | The extension calls the **Tavily** API (client‑side, no token stored in the repo) to render a PNG that is saved to the workspace `/.kaalastra/screenshots/` folder. | 1. Open the command palette (`Ctrl+Shift+P`). \n2. Run **“KaalAstra: Capture Screenshot”**. \n3. Choose **Full Window**, **Active Editor**, or **Selection**. \n4. The image appears in the VS Code explorer and can be attached to a bug report or documentation. |
+| **Configurable quality & size** | Settings `kaalastra.screenshotQuality` (0‑100) and `kaalastra.maxScreenshotSizeKB`. | Adjust in *Settings → Extensions → KaalAstra*. |
+| **Privacy‑first** | Images are generated locally; the Tavily request only contains the rendered bitmap – no source code is transmitted. | No secret storage or network traffic beyond the image generation service. |
+
+> **Note:** Tavily is an **optional** dependency. If no API key is defined, the command falls back to the built‑in VS Code `window.showSaveDialog` workflow.
+
+## 📈 Graph Visualisation with **Graphify**
+
+KaalAstra now ships a tiny **graph view** powered by the open‑source **Graphify** library.
+
+| Component | Description |
+|-----------|-------------|
+| **Security‑run graph** (`*.graph` files) | Generated after a scan, it encodes the flow from *source discovery* → *vulnerability detection* → *remediation suggestion* → *verification*. |
+| **Graphify web‑view** | A lightweight VS Code Webview renders the `.graph` file as an interactive directed graph. Nodes can be expanded/collapsed, and clicking a node opens the corresponding file/line in the editor. |
+| **Live‑update** | After each audit run the extension writes a fresh `run.graph` and refreshes the Graphify panel automatically. |
+| **Configuration** | `kaalastra.graphifyTheme` (light/dark), `kaalastra.graphifyLayout` (`dagre`, `elk`). |
+
+> **Screenshot of the graph view** (generated with the new Tavily command) is automatically saved as `run_graph.png` in the screenshots folder.
+
 ---
 
 ## ðŸŒ‘ The Dark Age of Code

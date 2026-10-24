@@ -2,8 +2,11 @@ import json
 import re
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
-import google.generativeai as genai
-from config import GEMINI_API_KEY, MODEL_NAME, CANDIDATE_MODELS
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
+from config import GEMINI_API_KEY, MODEL_NAME, CANDIDATE_MODELS, HF_TOKEN, HF_REVIEW_MODEL
 from git_capture import CommitMetadata
 from graph_engine import FocusedSubgraph
 from scanner import ScannerFinding
@@ -34,6 +37,45 @@ class ReviewReport(BaseModel):
     scanner_evidence: str
     external_advisories: List[Dict[str, str]]
 
+
+def _local_only_report(
+    commit: CommitMetadata,
+    scanner_findings: List[ScannerFinding],
+    advisories: List[SecurityAdvisory],
+    is_baseline: bool,
+    reason: str
+) -> ReviewReport:
+    findings = []
+    for idx, scanner_finding in enumerate(scanner_findings, 1):
+        severity = scanner_finding.severity.upper()
+        if severity not in {"CRITICAL", "HIGH", "MEDIUM", "LOW"}:
+            severity = "MEDIUM"
+        findings.append(KaalAstraFinding(
+            finding_id=f"KAAL-STATIC-{idx:03d}",
+            title=f"{scanner_finding.scanner_name}: {scanner_finding.rule_id}",
+            severity=severity,
+            confidence="HIGH",
+            cwe=scanner_finding.rule_id,
+            affected_file=scanner_finding.file_path,
+            line_range=str(scanner_finding.start_line),
+            is_new_regression=True,
+            failure_mechanism=scanner_finding.message,
+            graph_evidence="Reported by a local scanner; AI review was unavailable.",
+            why_diff_only_misses_this="Detected by local static analysis.",
+            proposed_remediation="Review the flagged code and apply the scanner's recommended secure pattern.",
+            patch_file=scanner_finding.file_path,
+            patch_unified_diff="",
+            regression_test_summary="Add a regression test for this security condition."
+        ))
+    return ReviewReport(
+        commit_hash=commit.short_hash,
+        is_baseline_run=is_baseline,
+        findings=findings,
+        summary=f"{reason} Local scanners reported {len(findings)} finding(s); this is not a complete AI review.",
+        scanner_evidence=f"{len(scanner_findings)} local static alerts detected",
+        external_advisories=[{"title": a.title, "url": a.url} for a in advisories]
+    )
+
 def run_kaalastra_review(
     commit: CommitMetadata,
     subgraph: Optional[FocusedSubgraph],
@@ -42,8 +84,11 @@ def run_kaalastra_review(
     is_baseline: bool = False
 ) -> ReviewReport:
     """Run Graph-Aware or Baseline LLM Security Review with strict JSON output."""
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel(MODEL_NAME)
+    if not HF_TOKEN and (genai is None or not GEMINI_API_KEY):
+        return _local_only_report(
+            commit, scanner_findings, advisories, is_baseline,
+            "No configured external AI review provider is available."
+        )
 
     # Build prompt
     prompt_sections = [
@@ -117,18 +162,55 @@ Respond ONLY with the JSON object. Do not wrap with conversational filler.
 
     full_prompt = "\n".join(prompt_sections)
     raw_text = ""
-    for candidate_model in CANDIDATE_MODELS:
+    if HF_TOKEN:
+        # One bounded Inference Providers request against the latest commit diff
+        # and its focused graph context. Do not send the repository contents.
+        import requests
+
         try:
-            model = genai.GenerativeModel(candidate_model)
-            response = model.generate_content(
-                full_prompt,
-                generation_config={"response_mime_type": "application/json"}
+            response = requests.post(
+                "https://router.huggingface.co/v1/chat/completions",
+                headers={"Authorization": f"Bearer {HF_TOKEN}"},
+                json={
+                    "model": HF_REVIEW_MODEL,
+                    "messages": [{"role": "user", "content": full_prompt}],
+                    "temperature": 0.1,
+                    "max_tokens": 1200,
+                    "response_format": {"type": "json_object"}
+                },
+                timeout=(3, 12)
             )
-            if response and response.text:
-                raw_text = response.text.strip()
-                break
-        except Exception:
-            continue
+            if not response.ok:
+                return _local_only_report(
+                    commit, scanner_findings, advisories, is_baseline,
+                    f"Hugging Face review returned HTTP {response.status_code}."
+                )
+            choices = response.json().get("choices", [])
+            if not choices:
+                return _local_only_report(
+                    commit, scanner_findings, advisories, is_baseline,
+                    "Hugging Face returned no review result."
+                )
+            raw_text = (choices[0].get("message", {}).get("content") or "").strip()
+        except Exception as error:
+            return _local_only_report(
+                commit, scanner_findings, advisories, is_baseline,
+                f"Hugging Face review could not complete: {str(error)[:180]}"
+            )
+    else:
+        genai.configure(api_key=GEMINI_API_KEY)
+        for candidate_model in CANDIDATE_MODELS:
+            try:
+                model = genai.GenerativeModel(candidate_model)
+                response = model.generate_content(
+                    full_prompt,
+                    generation_config={"response_mime_type": "application/json"}
+                )
+                if response and response.text:
+                    raw_text = response.text.strip()
+                    break
+            except Exception:
+                continue
 
     try:
         parsed_json = json.loads(raw_text, strict=False)

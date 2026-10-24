@@ -22,7 +22,8 @@
       "properties": {
         "kaalastra.codingModels.openai": { "type": "string", "default": "gpt-4.1", "description": "OpenAI model used for coding proposals." },
         "kaalastra.codingModels.anthropic": { "type": "string", "default": "claude-sonnet-4-5", "description": "Anthropic model used for coding proposals." },
-        "kaalastra.codingModels.gemini": { "type": "string", "default": "gemini-2.5-pro", "description": "Gemini model used for coding proposals." }
+        "kaalastra.codingModels.gemini": { "type": "string", "default": "gemini-2.5-pro", "description": "Gemini model used for coding proposals." },
+        "kaalastra.pythonPath": { "type": "string", "default": "", "description": "Python executable for the KaalAstra backend. Defaults to the VS Code Python interpreter or a workspace .venv." }
       }
     },
     "viewsContainers": {

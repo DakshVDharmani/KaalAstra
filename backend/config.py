@@ -10,6 +10,7 @@ load_dotenv(ROOT_DIR / ".env")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
 HF_TOKEN = os.getenv("HF_TOKEN", os.getenv("HUGGINGFACE_API_KEY", ""))
+HF_REVIEW_MODEL = os.getenv("HF_REVIEW_MODEL", "Qwen/Qwen2.5-Coder-7B-Instruct")
 FINSEC_MODEL_ID = os.getenv("FINSEC_MODEL_ID", "elsiddik/finsec_detector")
 KAALASTRA_PORT = int(os.getenv("KAALASTRA_PORT", "8000"))
 MODEL_NAME = "gemini-3.5-flash-lite"

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { execFile } from 'child_process';
+import { execFile, execFileSync } from 'child_process';
+import * as fs from 'fs';
 import { KaalAstraFixItem, ScanResult, GitCommitItem } from './types';
 import { WorkspaceDecorationManager } from './decorations';
 import { SecurityGraphEditorPanel } from './SecurityGraphEditorPanel';
@@ -141,45 +142,50 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
       message: `Analyzing commit ${commitRef} [Mode: ${engine.toUpperCase()}]...`
     });
 
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    let targetDir = workspaceFolders ? workspaceFolders[0].uri.fsPath : '';
-
-    // 1. Locate backend/cli.py robustly
-    let projectRoot = path.dirname(path.dirname(this._extensionUri.fsPath));
-    let cliScript = path.join(projectRoot, 'backend', 'cli.py');
-
-    const fs = require('fs');
-    if (!fs.existsSync(cliScript)) {
-      const candidates = [
-        path.join(path.dirname(this._extensionUri.fsPath), 'backend', 'cli.py'),
-        path.join(path.dirname(path.dirname(this._extensionUri.fsPath)), 'backend', 'cli.py'),
-        path.join(targetDir, '..', 'backend', 'cli.py'),
-        path.join(targetDir, 'backend', 'cli.py')
-      ];
-      for (const c of candidates) {
-        if (fs.existsSync(c)) {
-          cliScript = c;
-          projectRoot = path.dirname(path.dirname(c));
-          break;
-        }
-      }
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+    if (!workspaceRoot) {
+      this._isScanning = false;
+      this.postScanError('Open a workspace folder before running a security scan.');
+      return;
     }
 
-    // 2. Ensure targetDir points to the target application repository
-    if (path.basename(targetDir) !== 'demo-target') {
-      const candidates = [
-        path.join(targetDir, 'demo-target'),
-        path.join(projectRoot, 'demo-target'),
-        path.join(path.dirname(this._extensionUri.fsPath), 'demo-target'),
-        path.join(path.dirname(path.dirname(this._extensionUri.fsPath)), 'demo-target'),
-        'd:\\Avdhut\\programing\\Metro Hackathon\\demo-target'
-      ];
-      for (const d of candidates) {
-        if (fs.existsSync(path.join(d, '.git'))) {
-          targetDir = d;
+    // Find the backend by walking ancestors of the workspace and extension.
+    // The previous fixed dirname(..., 2) calculation pointed outside this repo.
+    const roots = [workspaceRoot, this._extensionUri.fsPath];
+    let projectRoot = '';
+    let cliScript = '';
+    for (const start of roots) {
+      let dir = start;
+      while (true) {
+        const candidate = path.join(dir, 'backend', 'cli.py');
+        if (fs.existsSync(candidate)) {
+          projectRoot = dir;
+          cliScript = candidate;
           break;
         }
+        const parent = path.dirname(dir);
+        if (parent === dir) break;
+        dir = parent;
       }
+      if (cliScript) break;
+    }
+    if (!cliScript) {
+      this._isScanning = false;
+      this.postScanError(`Could not find backend/cli.py from workspace ${workspaceRoot}.`);
+      return;
+    }
+
+    // Scan the opened repository. Use demo-target only when the opened folder
+    // is the extension/backend project itself and is not a Git repository.
+    let targetDir = this.getGitRoot(workspaceRoot);
+    if (!targetDir) {
+      const demoTarget = path.join(projectRoot, 'demo-target');
+      targetDir = this.getGitRoot(demoTarget);
+    }
+    if (!targetDir) {
+      this._isScanning = false;
+      this.postScanError(`No Git repository contains the opened folder ${workspaceRoot}. Open a Git repository and try again.`);
+      return;
     }
 
     const args = [cliScript, 'scan', targetDir];
@@ -193,16 +199,27 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
     args.push('--json', '--no-verify');
 
     try {
-      execFile('python', args, { cwd: projectRoot, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+      const configuredPython = vscode.workspace.getConfiguration('kaalastra').get<string>('pythonPath')
+        || vscode.workspace.getConfiguration('python').get<string>('defaultInterpreterPath');
+      const pythonCandidates = [
+        configuredPython,
+        path.join(workspaceRoot, '.venv', process.platform === 'win32' ? 'Scripts' : 'bin', process.platform === 'win32' ? 'python.exe' : 'python'),
+        path.join(projectRoot, '.venv', process.platform === 'win32' ? 'Scripts' : 'bin', process.platform === 'win32' ? 'python.exe' : 'python'),
+        process.platform === 'win32' ? 'python' : 'python3',
+        process.platform === 'win32' ? 'py' : 'python'
+      ].filter((candidate): candidate is string => Boolean(candidate));
+      const python = pythonCandidates.find(candidate => !path.isAbsolute(candidate) || fs.existsSync(candidate))!;
+      execFile(python, args, { cwd: projectRoot, maxBuffer: 10 * 1024 * 1024, timeout: 30_000 }, (error, stdout, stderr) => {
         this._isScanning = false;
 
-        if (error && !stdout) {
-          vscode.window.showErrorMessage(`KaalAstra Scan Error: ${stderr || error.message}`);
-          this._view?.webview.postMessage({
-            type: 'scanningStatus',
-            status: 'error',
-            message: 'Scan failed. Check terminal output.'
-          });
+        if (error) {
+          const details = error.killed
+            ? 'Scan timed out after 30 seconds. A backend scanner or model request did not finish.'
+            : stderr?.trim() || error.message;
+          const dependencyHint = /ModuleNotFoundError|No module named|TyperArgument\.make_metavar|Secondary flag/i.test(details)
+            ? '\nInstall backend dependencies with: python -m pip install -r backend/requirements.txt'
+            : '';
+          this.postScanError(`${details}${dependencyHint}`);
           return;
         }
 
@@ -275,6 +292,7 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
             message: data.commit?.message || '',
             totalIssues: fixes.length,
             graphSummary: data.subgraph?.graph_summary || '',
+            analysisSummary: data.report?.summary || 'The scan completed without a review summary.',
             asciiTree: data.subgraph?.ascii_tree || '',
             subgraph: data.subgraph,
             lifecycleGraph: lifecycleGraph,
@@ -295,7 +313,7 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
             this.applyWorkspaceMarkings(fixes[0].filePath, fixes);
           }
         } catch (err: any) {
-          vscode.window.showErrorMessage(`Failed to parse KaalAstra output: ${err.message}`);
+          this.postScanError(`Could not read scan results: ${err.message}${stderr ? ` (${stderr.trim()})` : ''}`);
         }
       });
     } catch (spawnErr: any) {
@@ -304,13 +322,30 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  private postScanError(message: string) {
+    vscode.window.showErrorMessage(`KaalAstra scan failed: ${message}`);
+    this._view?.webview.postMessage({ type: 'scanningStatus', status: 'error', message });
+  }
+
+  private getGitRoot(directory: string): string | undefined {
+    try {
+      return execFileSync('git', ['rev-parse', '--show-toplevel'], {
+        cwd: directory,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore']
+      }).trim();
+    } catch {
+      return undefined;
+    }
+  }
+
   public async applyWorkspaceMarkings(filePathRel: string, fixes: KaalAstraFixItem[]) {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders) return;
     const root = workspaceFolders[0].uri.fsPath;
-    const fs = require('fs');
+    const repoRoot = this.getGitRoot(root) || root;
 
-    let fullPath = path.join(root, filePathRel);
+    let fullPath = path.join(repoRoot, filePathRel);
     if (!fs.existsSync(fullPath)) fullPath = path.join(root, 'demo-target', filePathRel);
     if (!fs.existsSync(fullPath)) fullPath = path.join(path.dirname(this._extensionUri.fsPath), 'demo-target', filePathRel);
     if (!fs.existsSync(fullPath)) fullPath = path.join(path.dirname(path.dirname(this._extensionUri.fsPath)), 'demo-target', filePathRel);
@@ -333,23 +368,29 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
       message: 'Searching live security advisories with Tavily...'
     });
 
-    let projectRoot = path.dirname(path.dirname(this._extensionUri.fsPath));
-    let cliScript = path.join(projectRoot, 'backend', 'cli.py');
-    const fs = require('fs');
-    if (!fs.existsSync(cliScript)) {
-      const candidates = [
-        path.join(path.dirname(this._extensionUri.fsPath), 'backend', 'cli.py'),
-        path.join(path.dirname(path.dirname(this._extensionUri.fsPath)), 'backend', 'cli.py'),
-      ];
-      for (const c of candidates) {
-        if (fs.existsSync(c)) {
-          cliScript = c;
-          projectRoot = path.dirname(path.dirname(c));
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+    const roots = [workspaceRoot, this._extensionUri.fsPath].filter((value): value is string => Boolean(value));
+    let projectRoot = '';
+    let cliScript = '';
+    for (const start of roots) {
+      let dir = start;
+      while (true) {
+        const candidate = path.join(dir, 'backend', 'cli.py');
+        if (fs.existsSync(candidate)) {
+          projectRoot = dir;
+          cliScript = candidate;
           break;
         }
+        const parent = path.dirname(dir);
+        if (parent === dir) break;
+        dir = parent;
       }
+      if (cliScript) break;
     }
-
+    if (!cliScript) {
+      this._view?.webview.postMessage({ type: 'tavilyStatus', status: 'error', message: 'Could not find backend/cli.py.' });
+      return;
+    }
     const args = [
       cliScript,
       'explain',
@@ -362,7 +403,8 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
     ];
 
     try {
-      execFile('python', args, { cwd: projectRoot, maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
+      const python = process.platform === 'win32' ? 'python' : 'python3';
+      execFile(python, args, { cwd: projectRoot, maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
         if (err && !stdout) {
           this._view?.webview.postMessage({
             type: 'tavilyStatus',
@@ -418,7 +460,7 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
   public async previewLine(filePathRel: string, line: number) {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders) return;
-    const root = workspaceFolders[0].uri.fsPath;
+    const root = this.getGitRoot(workspaceFolders[0].uri.fsPath) || workspaceFolders[0].uri.fsPath;
 
     // Check in root or in demo-target
     let targetPath = path.join(root, filePathRel);

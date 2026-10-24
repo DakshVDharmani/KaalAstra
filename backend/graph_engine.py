@@ -151,18 +151,21 @@ class CodeGraph:
             self.graph.add_edge(file_node_id, node_id, relationship="CONTAINS")
 
     def _resolve_calls(self):
-        """Cross-reference function calls from routes and functions to target functions."""
-        for caller_id, caller_node in list(self.nodes_by_id.items()):
-            caller_snippet = caller_node.code_snippet
-            for target_id, target_node in self.nodes_by_id.items():
-                if caller_id == target_id:
-                    continue
-                # If target function name is invoked in caller snippet
-                pattern = rf"\b{re.escape(target_node.name)}\s*\("
-                if re.search(pattern, caller_snippet):
+        """Resolve calls using a name index instead of comparing every node pair."""
+        targets_by_name: Dict[str, List[AstNode]] = {}
+        for target in self.nodes_by_id.values():
+            targets_by_name.setdefault(target.name, []).append(target)
+
+        call_re = re.compile(r"\b([a-zA-Z_$][\w$]*)\s*\(")
+        for caller_id, caller_node in self.nodes_by_id.items():
+            called_names = set(call_re.findall(caller_node.code_snippet))
+            for name in called_names:
+                for target in targets_by_name.get(name, []):
+                    if caller_id == target.node_id:
+                        continue
                     self.graph.add_edge(
                         caller_id,
-                        target_id,
+                        target.node_id,
                         relationship="CALLS",
                         file_path=caller_node.file_path,
                         line=caller_node.start_line

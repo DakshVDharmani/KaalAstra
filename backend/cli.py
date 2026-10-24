@@ -5,7 +5,22 @@ warnings.filterwarnings("ignore")
 from pathlib import Path
 from typing import Optional
 import typer
+import click
+from typer.core import TyperOption
 from rich.console import Console
+
+# Typer versions before Click 8.3 pass ``flag_value=None`` to Click. Click 8.3
+# now treats that explicit None as a flag value, which turns string options
+# (such as --engine) into flags. Restore Click's UNSET default for compatibility.
+if hasattr(click.core, "UNSET"):
+    _typer_option_init = TyperOption.__init__
+
+    def _click_option_compat(self, *args, **kwargs):
+        if kwargs.get("flag_value") is None:
+            kwargs["flag_value"] = click.core.UNSET
+        _typer_option_init(self, *args, **kwargs)
+
+    TyperOption.__init__ = _click_option_compat
 
 from git_capture import capture_commit
 from graph_engine import CodeGraph
@@ -26,12 +41,13 @@ app = typer.Typer(help="KaalAstra: Graph-Aware Commit Sentinel & Verified Remedi
 @app.command()
 def scan(
     repo_path: str = typer.Argument(".", help="Path to git repository"),
-    commit_ref: str = typer.Option("HEAD", "--commit", "-c", help="Commit hash or ref to analyze"),
-    baseline: bool = typer.Option(False, "--baseline", "-b", help="Run in diff-only baseline mode (omit graph)"),
-    verify: bool = typer.Option(True, "--verify/--no-verify", help="Automatically verify patch with unit tests"),
-    as_json: bool = typer.Option(False, "--json", help="Output machine-readable JSON for IDE extensions"),
-    finsec: bool = typer.Option(False, "--finsec", help="Enable elsiddik/finsec_detector HuggingFace model"),
-    engine: str = typer.Option("hybrid", "--engine", "-e", help="Engine mode: hybrid | finsec | baseline")
+    commit_ref: str = typer.Option("HEAD", "--commit", "-c", is_flag=False, help="Commit hash or ref to analyze"),
+    baseline: bool = typer.Option(False, "--baseline", "-b", is_flag=True, help="Run in diff-only baseline mode (omit graph)"),
+    verify: bool = typer.Option(True, "--verify", is_flag=True, help="Automatically verify patch with unit tests"),
+    no_verify: bool = typer.Option(False, "--no-verify", is_flag=True, help="Skip automatic patch verification"),
+    as_json: bool = typer.Option(False, "--json", is_flag=True, help="Output machine-readable JSON for IDE extensions"),
+    finsec: bool = typer.Option(False, "--finsec", is_flag=True, help="Enable elsiddik/finsec_detector HuggingFace model"),
+    engine: str = typer.Option("hybrid", "--engine", "-e", is_flag=False, help="Engine mode: hybrid | finsec | baseline")
 ):
     """Run Graph-Aware Security Review on the given commit."""
     repo_p = str(Path(repo_path).resolve())
@@ -93,14 +109,15 @@ def scan(
         else:
             scanner_findings = run_all_scanners(repo_p, changed_rel_paths, enable_finsec=use_finsec, commit_hash=commit.commit_hash)
 
+            # The VS Code JSON scan should not block on optional external
+            # research. Tavily remains available through the dedicated Ask
+            # Tavily action and in the interactive CLI workflow.
             advisories = []
-            if not is_baseline and subgraph and subgraph.unprotected_entrypoints:
-                advisories = get_contextual_advisories(subgraph.unprotected_entrypoints, commit.changed_files)
 
             report = run_kaalastra_review(commit, subgraph, scanner_findings, advisories, is_baseline=is_baseline)
 
         verification = None
-        if verify and report.findings:
+        if verify and not no_verify and report.findings:
             first_f = report.findings[0]
             if first_f.patch_unified_diff and first_f.patch_file:
                 verification = verify_patch(repo_p, first_f.patch_file, first_f.patch_unified_diff)
@@ -198,7 +215,7 @@ def scan(
 
     # Step 6: Fix Verification
     verification = None
-    if verify and report.findings:
+    if verify and not no_verify and report.findings:
         first_finding = report.findings[0]
         if first_finding.patch_unified_diff and first_finding.patch_file:
             with console.status("[bold cyan]🔬 Verifying patch against unit test suite and Semgrep...[/bold cyan]", spinner="dots"):
@@ -208,12 +225,12 @@ def scan(
 
 @app.command()
 def explain(
-    snippet: str = typer.Option(..., "--snippet", "-s", help="Code snippet captured from editor"),
-    file_name: str = typer.Option("code.js", "--file", "-f", help="File name"),
-    question: str = typer.Option("Why did this happen?", "--question", "-q", help="Developer question"),
-    title: str = typer.Option("", "--title", "-t", help="Vulnerability title"),
-    cwe: str = typer.Option("", "--cwe", "-c", help="CWE identifier"),
-    as_json: bool = typer.Option(True, "--json", help="Output machine-readable JSON")
+    snippet: str = typer.Option(..., "--snippet", "-s", is_flag=False, help="Code snippet captured from editor"),
+    file_name: str = typer.Option("code.js", "--file", "-f", is_flag=False, help="File name"),
+    question: str = typer.Option("Why did this happen?", "--question", "-q", is_flag=False, help="Developer question"),
+    title: str = typer.Option("", "--title", "-t", is_flag=False, help="Vulnerability title"),
+    cwe: str = typer.Option("", "--cwe", "-c", is_flag=False, help="CWE identifier"),
+    as_json: bool = typer.Option(True, "--json", is_flag=True, help="Output machine-readable JSON")
 ):
     """Query Tavily research and Gemini for an in-depth explanation of marked code."""
     import json
@@ -227,8 +244,8 @@ def explain(
 @app.command()
 def finsec(
     file_path: str = typer.Argument(..., help="Path to code file to audit with elsiddik/finsec_detector"),
-    local: bool = typer.Option(False, "--local", help="Run model locally with PyTorch (requires downloading 14.5 GB weights)"),
-    as_json: bool = typer.Option(True, "--json", help="Output machine-readable JSON format without NLP prose")
+    local: bool = typer.Option(False, "--local", is_flag=True, help="Run model locally with PyTorch (requires downloading 14.5 GB weights)"),
+    as_json: bool = typer.Option(True, "--json", is_flag=True, help="Output machine-readable JSON format without NLP prose")
 ):
     """Audit source code directly using FineSec-AI (elsiddik/finsec_detector)."""
     import json
@@ -256,7 +273,7 @@ def finsec(
 
 @app.command()
 def serve(
-    port: int = typer.Option(8000, "--port", "-p", help="Port for FastAPI server")
+    port: int = typer.Option(8000, "--port", "-p", is_flag=False, help="Port for FastAPI server")
 ):
     """Start the KaalAstra FastAPI daemon for VS Code Extension integration."""
     import uvicorn

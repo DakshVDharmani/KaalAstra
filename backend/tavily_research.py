@@ -1,7 +1,6 @@
 import os
 from typing import List, Dict, Optional, Any
 from pydantic import BaseModel, Field
-import tavily
 from config import TAVILY_API_KEY
 
 class SecurityAdvisory(BaseModel):
@@ -18,6 +17,10 @@ def research_security_guidance(query: str, max_results: int = 2) -> List[Securit
         return []
 
     try:
+        # Tavily is an optional research integration. Core local scans should
+        # remain usable when its package is not installed or no key is set.
+        import tavily
+
         client = tavily.TavilyClient(api_key=TAVILY_API_KEY)
         response = client.search(
             query=query,
