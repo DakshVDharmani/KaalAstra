@@ -1,4 +1,4 @@
-# âš”ï¸ KAALASTRA
+# KAALASTRA
 
 ### à¤•à¤¾à¤²à¤¾à¤¸à¥à¤¤à¥à¤° â€” The Weapon Against the Dark Age of Code
 
@@ -307,7 +307,7 @@ License to be determined.
 
 ---
 
-### âš”ï¸ KAALASTRA
+### KAALASTRA
 
 **Forged in Bharat. Built for the world.**
 
