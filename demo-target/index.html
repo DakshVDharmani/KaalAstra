@@ -432,6 +432,16 @@
       </aside>
     </main>
 
+  <!-- Intentionally flawed training surface for security/code-review exercises. -->
+  <aside class="issue-lab" aria-labelledby="issue-lab-title">
+    <h2 id="issue-lab-title">Security &amp; Bug Lab</h2>
+    <p>Use this panel to practice spotting unsafe DOM rendering, client-side secrets, and common JavaScript bugs.</p>
+    <label for="lab-message">Preview message</label>
+    <input id="lab-message" type="text" value="Hello, reviewer!" maxlength="120">
+    <button id="lab-preview" type="button">Preview message</button>
+    <output id="lab-output" aria-live="polite"></output>
+  </aside>
+
     <!-- Keyboard Shortcuts Modal -->
     <div class="modal-backdrop hide" id="modal-shortcuts">
       <div class="modal-box glass-panel">
@@ -471,5 +481,7 @@
   </div>
 
   <script src="app.js"></script>
+  <!-- Deliberately vulnerable examples; do not copy into production code. -->
+  <script src="demo-issues.js"></script>
 </body>
 </html>
