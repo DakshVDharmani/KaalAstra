@@ -1014,8 +1014,99 @@ body {
   border-color: rgba(34, 197, 94, 0.65);
 }
 
+/* Snip Tool & Floating Ask Tavily for Extension Webview */
+.n8n-canvas-wrapper.snip-mode {
+  cursor: crosshair !important;
+}
 
+.n8n-canvas-wrapper.snip-mode .n8n-node-card {
+  pointer-events: none;
+}
 
+.ext-snip-banner {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(18, 18, 21, 0.95);
+  border: 1px solid var(--vscode-widget-border, #27272a);
+  border-radius: 16px;
+  padding: 4px 12px;
+  font-size: 10.5px;
+  color: var(--vscode-foreground);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  z-index: 55;
+  pointer-events: none;
+}
 
+.ext-snip-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #38bdf8;
+  animation: pulseDot 1.5s infinite;
+}
 
+.ext-snip-marquee {
+  position: absolute;
+  border: 1.5px dashed #38bdf8;
+  background: rgba(56, 189, 248, 0.08);
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 50;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+}
 
+.ext-snip-pill {
+  position: absolute;
+  z-index: 65;
+  display: flex;
+  align-items: center;
+  background: #141417;
+  border: 1px solid rgba(56, 189, 248, 0.7);
+  border-radius: 5px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6), 0 0 12px rgba(56, 189, 248, 0.2);
+  padding: 2px;
+  gap: 2px;
+}
+
+.ext-snip-btn-ask {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #38bdf8;
+  color: #09090b;
+  font-weight: 600;
+  font-size: 10.5px;
+  border: none;
+  border-radius: 3px;
+  padding: 4px 9px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.ext-snip-btn-ask:hover {
+  background: #7dd3fc;
+}
+
+.ext-snip-btn-cancel {
+  background: transparent;
+  border: none;
+  color: #71717a;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.ext-snip-btn-cancel:hover {
+  background: #27272a;
+  color: #f4f4f5;
+}

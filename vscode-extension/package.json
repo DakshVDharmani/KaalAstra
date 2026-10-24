@@ -45,10 +45,25 @@
         "command": "kaalastra.applyAllFixes",
         "title": "KaalAstra: Apply Verified Fixes",
         "icon": "$(check-all)"
+      },
+      {
+        "command": "kaalastra.askTavilyForSelection",
+        "title": "KaalAstra: Snapshot Code & Ask Tavily",
+        "icon": "$(search)"
+      },
+      {
+        "command": "kaalastra.openGraphWorkspace",
+        "title": "KaalAstra: Open Security Graph in Workspace",
+        "icon": "$(graph)"
       }
     ],
     "menus": {
       "view/title": [
+        {
+          "command": "kaalastra.openGraphWorkspace",
+          "when": "view == kaalastra.sidebarView",
+          "group": "navigation@0"
+        },
         {
           "command": "kaalastra.scanCurrentCommit",
           "when": "view == kaalastra.sidebarView",
@@ -58,6 +73,13 @@
           "command": "kaalastra.applyAllFixes",
           "when": "view == kaalastra.sidebarView",
           "group": "navigation@2"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "kaalastra.askTavilyForSelection",
+          "group": "kaalastra@1",
+          "when": "editorHasSelection"
         }
       ]
     }

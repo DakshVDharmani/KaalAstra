@@ -3,6 +3,7 @@ import * as path from 'path';
 import { execFile } from 'child_process';
 import { KaalAstraFixItem, ScanResult, GitCommitItem } from './types';
 import { WorkspaceDecorationManager } from './decorations';
+import { SecurityGraphEditorPanel } from './SecurityGraphEditorPanel';
 
 export class CodeFixViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'kaalastra.sidebarView';
@@ -12,6 +13,10 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
   private _decorations = new WorkspaceDecorationManager();
 
   constructor(private readonly _extensionUri: vscode.Uri) {}
+
+  public getCurrentScan(): ScanResult | undefined {
+    return this._currentScan;
+  }
 
   public resolveWebviewView(
     webviewView: vscode.WebviewView,
@@ -32,6 +37,11 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
         case 'webviewReady':
         case 'scanActiveCommit': {
           await this.scanRepository(message.baseline || false, message.commitRef || 'HEAD');
+          break;
+        }
+
+        case 'openGraphWorkspace': {
+          SecurityGraphEditorPanel.createOrShow(this._extensionUri, this._currentScan);
           break;
         }
 
@@ -358,6 +368,22 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  public sendSnapshotToTavily(snippet: string, fileName: string, line: number) {
+    this._view?.show?.(true);
+    this._view?.webview.postMessage({
+      type: 'setSnapshot',
+      data: {
+        snippet,
+        fileName,
+        line,
+        title: `Selection from ${fileName}:${line}`,
+        cwe: 'Code Analysis',
+        autoAsk: true,
+        question: 'Why did this happen or how to make this code secure?'
+      }
+    });
+  }
+
   public async previewLine(filePathRel: string, line: number) {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders) return;
@@ -670,6 +696,9 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
           <button id="btnScan" class="btn btn-secondary icon-btn" title="Scan Current Commit">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           </button>
+          <button id="btnOpenWorkspaceGraph" class="btn btn-secondary" title="Show Security Graph in Workspace Editor Tab" style="font-size: 10px; display: inline-flex; align-items: center; gap: 3px;">
+            <span>⤢ Graph</span>
+          </button>
           <button id="btnBaseline" class="btn btn-secondary" title="Run Diff-Only Baseline Review" style="font-size: 10px;">
             Baseline
           </button>
@@ -753,6 +782,9 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
           </button>
           <button id="btnOpenGraphFile" class="btn btn-secondary" title="Open .graph file in VS Code Editor" style="font-size: 10px; white-space: nowrap;">
             📄 .graph
+          </button>
+          <button id="btnOpenGraphWorkspace" class="btn btn-secondary" title="Open interactive flowchart in full editor workspace" style="font-size: 10px; white-space: nowrap; color: #38bdf8;">
+            ⤢ Workspace Tab
           </button>
         </div>
       </div>

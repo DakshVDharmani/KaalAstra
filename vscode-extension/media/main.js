@@ -167,6 +167,14 @@
     vscode.postMessage({ command: 'openGraphFile' });
   });
 
+  document.getElementById('btnOpenWorkspaceGraph')?.addEventListener('click', () => {
+    vscode.postMessage({ command: 'openGraphWorkspace' });
+  });
+
+  document.getElementById('btnOpenGraphWorkspace')?.addEventListener('click', () => {
+    vscode.postMessage({ command: 'openGraphWorkspace' });
+  });
+
   // Action Buttons
   btnScan?.addEventListener('click', () => {
     if (activeFileNameEl) activeFileNameEl.textContent = 'Scanning commit...';
@@ -322,6 +330,35 @@
         break;
       }
 
+      case 'setSnapshot': {
+        const s = message.data;
+        currentSnapshot = {
+          snippet: s.snippet,
+          fileName: s.fileName,
+          line: s.line,
+          title: s.title || 'Code Snapshot',
+          cwe: s.cwe || 'Code Analysis'
+        };
+        if (snapLocation) snapLocation.textContent = `${s.fileName}:${s.line} (${currentSnapshot.cwe})`;
+        if (snapCode) snapCode.textContent = currentSnapshot.snippet;
+
+        // Switch to Tavily Tab
+        tabButtons.forEach((b) => b.classList.remove('active'));
+        const tavilyTab = document.querySelector('[data-filter="tavily"]');
+        tavilyTab?.classList.add('active');
+        currentFilter = 'tavily';
+        fixListEl?.classList.add('hidden');
+        topologyPanel?.classList.add('hidden');
+        tavilyPanel?.classList.remove('hidden');
+
+        if (s.autoAsk) {
+          const q = s.question || (tavilyQuery ? tavilyQuery.value : 'Why did this happen?');
+          if (tavilyQuery) tavilyQuery.value = q;
+          triggerTavilyAsk(q);
+        }
+        break;
+      }
+
       case 'tavilyStatus': {
         if (tavilyResultBox) tavilyResultBox.classList.remove('hidden');
         if (tavilyText) {
@@ -377,11 +414,150 @@
   let vPanY = 40;
   let vAnimActive = true;
 
-  // Canvas state for Topology flowchart
-  let tZoom = 0.82;
-  let tPanX = 18;
-  let tPanY = 40;
-  let tAnimActive = true;
+  // Shared Snip & Ask Tavily region selection handler
+  function initGraphSnipHandler(wrapper, marquee, pill, banner, snipBtn, btnAsk, btnCancel, getNodes, getTransform) {
+    if (!wrapper) return { isSnipActive: () => false };
+    let isSnip = false;
+    let isSelecting = false;
+    let sStart = { x: 0, y: 0 };
+    let curSel = null;
+
+    function toggleSnip() {
+      isSnip = !isSnip;
+      wrapper.classList.toggle('snip-mode', isSnip);
+      snipBtn?.classList.toggle('active', isSnip);
+      banner?.classList.toggle('hidden', !isSnip);
+      if (!isSnip) clearSnip();
+    }
+
+    function clearSnip() {
+      curSel = null;
+      marquee?.classList.add('hidden');
+      pill?.classList.add('hidden');
+    }
+
+    snipBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleSnip();
+    });
+
+    btnCancel?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      clearSnip();
+    });
+
+    btnAsk?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!curSel) return;
+      const { zoom, panX, panY } = getTransform();
+      const nodes = getNodes();
+
+      const intersected = nodes.filter(n => {
+        const nx = n.x * zoom + panX;
+        const ny = n.y * zoom + panY;
+        const nw = 250 * zoom;
+        const nh = 110 * zoom;
+        return (
+          nx + nw >= curSel.left &&
+          nx <= curSel.left + curSel.width &&
+          ny + nh >= curSel.top &&
+          ny <= curSel.top + curSel.height
+        );
+      });
+
+      const primary = intersected.length > 0 ? intersected[0] : nodes[0];
+      currentSnapshot = {
+        snippet: primary ? primary.code : 'refundTransaction()',
+        fileName: 'src/services/paymentService.js',
+        title: primary ? primary.name : 'Missing Authorization Guard',
+        cwe: primary ? (primary.badge && primary.badge.startsWith('CWE') ? primary.badge : 'CWE-306') : 'CWE-306'
+      };
+
+      if (snapCode) {
+        snapCode.innerHTML = `// Captured Region (${intersected.length} nodes):\n` +
+          intersected.map(n => `// [${n.cat}] ${n.name}: ${n.code}`).join('\n');
+      }
+
+      // Switch to Tavily Tab
+      const tavilyTabBtn = document.querySelector('.tab-btn[data-filter="tavily"]');
+      if (tavilyTabBtn) tavilyTabBtn.click();
+
+      if (tavilyQuery) {
+        tavilyQuery.value = 'Why did this happen in this captured flow?';
+      }
+      triggerTavilyAsk('Why did this happen in this captured flow?');
+
+      if (isSnip) toggleSnip();
+      else clearSnip();
+    });
+
+    wrapper.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.ext-snip-pill') || e.target.closest('.n8n-hud-bar')) return;
+      if (isSnip) {
+        const rect = wrapper.getBoundingClientRect();
+        sStart = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        isSelecting = true;
+        curSel = null;
+        pill?.classList.add('hidden');
+        if (marquee) {
+          marquee.style.left = `${sStart.x}px`;
+          marquee.style.top = `${sStart.y}px`;
+          marquee.style.width = '0px';
+          marquee.style.height = '0px';
+          marquee.classList.remove('hidden');
+        }
+      }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isSnip || !isSelecting || !marquee) return;
+      const rect = wrapper.getBoundingClientRect();
+      const curX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+      const curY = Math.max(0, Math.min(e.clientY - rect.top, rect.height));
+
+      const left = Math.min(sStart.x, curX);
+      const top = Math.min(sStart.y, curY);
+      const width = Math.abs(curX - sStart.x);
+      const height = Math.abs(curY - sStart.y);
+
+      marquee.style.left = `${left}px`;
+      marquee.style.top = `${top}px`;
+      marquee.style.width = `${width}px`;
+      marquee.style.height = `${height}px`;
+    });
+
+    window.addEventListener('mouseup', (e) => {
+      if (!isSnip || !isSelecting || !marquee) return;
+      isSelecting = false;
+      const rect = wrapper.getBoundingClientRect();
+      const curX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+      const curY = Math.max(0, Math.min(e.clientY - rect.top, rect.height));
+
+      const left = Math.min(sStart.x, curX);
+      const top = Math.min(sStart.y, curY);
+      const width = Math.abs(curX - sStart.x);
+      const height = Math.abs(curY - sStart.y);
+
+      if (width < 20 || height < 20) {
+        clearSnip();
+        return;
+      }
+
+      curSel = { left, top, width, height };
+
+      if (pill) {
+        const pLeft = Math.min(left + width - 90, rect.width - 130);
+        const pTop = Math.min(top + height + 6, rect.height - 40);
+        pill.style.left = `${Math.max(8, pLeft)}px`;
+        pill.style.top = `${pTop}px`;
+        pill.classList.remove('hidden');
+      }
+    });
+
+    return {
+      isSnipActive: () => isSnip
+    };
+  }
 
   function renderVisualFlowGraph() {
     if (!visualGraphBox) return;
@@ -522,6 +698,20 @@
           <div class="n8n-hud-divider"></div>
           <button class="n8n-hud-btn" id="vFit" title="Fit to View">⊡</button>
           <button class="n8n-hud-btn" id="vReset" title="Reset View">↺</button>
+          <div class="n8n-hud-divider"></div>
+          <button class="n8n-hud-btn" id="vSnipBtn" title="Snip & Ask Tavily">⛶</button>
+        </div>
+
+        <div class="ext-snip-banner hidden" id="vSnipBanner">
+          <span class="ext-snip-dot"></span>
+          <span>Drag to select region • Press Esc to cancel</span>
+        </div>
+        <div class="ext-snip-marquee hidden" id="vSnipMarquee"></div>
+        <div class="ext-snip-pill hidden" id="vSnipPill">
+          <button class="ext-snip-btn-ask" id="vBtnAskPill">
+            <span>🔍 Ask Tavily</span>
+          </button>
+          <button class="ext-snip-btn-cancel" id="vBtnCancelPill">✕</button>
         </div>
       </div>
     `;
@@ -624,12 +814,24 @@
       if (zoomDisp) zoomDisp.textContent = `${Math.round(vZoom * 100)}%`;
     }
 
+    const vSnipCtrl = initGraphSnipHandler(
+      wrapper,
+      document.getElementById('vSnipMarquee'),
+      document.getElementById('vSnipPill'),
+      document.getElementById('vSnipBanner'),
+      document.getElementById('vSnipBtn'),
+      document.getElementById('vBtnAskPill'),
+      document.getElementById('vBtnCancelPill'),
+      () => nodes,
+      () => ({ zoom: vZoom, panX: vPanX, panY: vPanY })
+    );
+
     let isPan = false;
     let sX = 0;
     let sY = 0;
 
     wrapper?.addEventListener('mousedown', (e) => {
-      if (e.target.closest('.n8n-node-card') || e.target.closest('.n8n-hud-bar')) return;
+      if (vSnipCtrl?.isSnipActive() || e.target.closest('.n8n-node-card') || e.target.closest('.n8n-hud-bar')) return;
       isPan = true;
       sX = e.clientX - vPanX;
       sY = e.clientY - vPanY;
@@ -785,6 +987,20 @@
           <div class="n8n-hud-divider"></div>
           <button class="n8n-hud-btn" id="tFit" title="Fit to View">⊡</button>
           <button class="n8n-hud-btn" id="tReset" title="Reset View">↺</button>
+          <div class="n8n-hud-divider"></div>
+          <button class="n8n-hud-btn" id="tSnipBtn" title="Snip & Ask Tavily">⛶</button>
+        </div>
+
+        <div class="ext-snip-banner hidden" id="tSnipBanner">
+          <span class="ext-snip-dot"></span>
+          <span>Drag to select region • Press Esc to cancel</span>
+        </div>
+        <div class="ext-snip-marquee hidden" id="tSnipMarquee"></div>
+        <div class="ext-snip-pill hidden" id="tSnipPill">
+          <button class="ext-snip-btn-ask" id="tBtnAskPill">
+            <span>🔍 Ask Tavily</span>
+          </button>
+          <button class="ext-snip-btn-cancel" id="tBtnCancelPill">✕</button>
         </div>
       </div>
     `;
@@ -884,12 +1100,24 @@
       if (tZoomDisp) tZoomDisp.textContent = `${Math.round(tZoom * 100)}%`;
     }
 
+    const tSnipCtrl = initGraphSnipHandler(
+      tWrapper,
+      document.getElementById('tSnipMarquee'),
+      document.getElementById('tSnipPill'),
+      document.getElementById('tSnipBanner'),
+      document.getElementById('tSnipBtn'),
+      document.getElementById('tBtnAskPill'),
+      document.getElementById('tBtnCancelPill'),
+      () => nodes,
+      () => ({ zoom: tZoom, panX: tPanX, panY: tPanY })
+    );
+
     let isTPan = false;
     let tsX = 0;
     let tsY = 0;
 
     tWrapper?.addEventListener('mousedown', (e) => {
-      if (e.target.closest('.n8n-node-card') || e.target.closest('.n8n-hud-bar')) return;
+      if (tSnipCtrl?.isSnipActive() || e.target.closest('.n8n-node-card') || e.target.closest('.n8n-hud-bar')) return;
       isTPan = true;
       tsX = e.clientX - tPanX;
       tsY = e.clientY - tPanY;
