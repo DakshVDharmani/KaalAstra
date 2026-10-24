@@ -44,6 +44,7 @@ export interface ScanResult {
   totalIssues: number;
   graphSummary: string;
   asciiTree: string;
+  subgraph?: any;
   lifecycleGraph?: string;
   gitCommits?: GitCommitItem[];
   fixes: KaalAstraFixItem[];

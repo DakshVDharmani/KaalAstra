@@ -654,183 +654,367 @@ body {
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
-.vgraph-stage-msg {
-  font-size: 11px;
-  opacity: 0.8;
-  line-height: 1.35;
-}
+/* ==========================================================================
+   n8n & Eraser AI Node Graph & Flowchart System
+   ========================================================================== */
 
-/* Connecting Trunk Line with Glowing Pulse */
-.vgraph-trunk-connector {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  height: 22px;
+/* ==========================================================================
+   Minimalist Node Graph & Flowchart System (Linear & Eraser.io style)
+   ========================================================================== */
+
+.n8n-canvas-wrapper {
   position: relative;
   width: 100%;
+  height: 500px;
+  background-color: #09090b;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--vscode-widget-border, #27272a);
+  overflow: hidden;
+  cursor: grab;
 }
 
-.vgraph-trunk-line {
-  width: 2px;
-  height: 100%;
-  background: linear-gradient(to bottom, #38bdf8, #818cf8);
-  box-shadow: 0 0 6px rgba(56, 189, 248, 0.35);
+.n8n-canvas-wrapper.grabbing {
+  cursor: grabbing;
 }
 
-.vgraph-trunk-pulse {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #38bdf8;
-  box-shadow: 0 0 8px #38bdf8;
+.n8n-canvas-world {
   position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* Minimalist Floating HUD */
+.n8n-hud-bar {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  background: #141417;
+  border: 1px solid #27272a;
+  border-radius: 6px;
+  padding: 3px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  z-index: 50;
+}
+
+.n8n-hud-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #a1a1aa;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.12s;
+}
+
+.n8n-hud-btn:hover {
+  background: #27272a;
+  color: #f4f4f5;
+}
+
+.n8n-hud-divider {
+  width: 1px;
+  height: 14px;
+  background: #27272a;
+  margin: 0 2px;
+}
+
+.n8n-hud-zoom {
+  font-size: 10.5px;
+  font-family: var(--vscode-editor-font-family, monospace);
+  color: #71717a;
+  padding: 0 4px;
+  min-width: 38px;
+  text-align: center;
+}
+
+.n8n-top-hud {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: flex;
+  gap: 6px;
+  z-index: 50;
+}
+
+.n8n-hud-chip {
+  background: #141417;
+  border: 1px solid #27272a;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  color: #a1a1aa;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--vscode-editor-font-family, monospace);
+}
+
+/* Connecting Layer */
+.n8n-connections-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2400px;
+  height: 1600px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.n8n-edge-path {
+  fill: none;
+  stroke: #3f3f46;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  transition: stroke 0.15s;
+}
+
+.n8n-edge-danger {
+  stroke: #ef4444;
+  stroke-dasharray: 4 4;
+}
+
+.n8n-edge-verified {
+  stroke: #22c55e;
+}
+
+/* Edge Floating Badges */
+.n8n-edge-badge {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: #141417;
+  border: 1px solid #27272a;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-family: var(--vscode-editor-font-family, monospace);
+  color: #a1a1aa;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  pointer-events: none;
+  z-index: 15;
+  white-space: nowrap;
+}
+
+.n8n-edge-badge.danger {
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.35);
+  background: #1a0f12;
+}
+
+.n8n-edge-badge.verified {
+  color: #34d399;
+  border-color: rgba(34, 197, 94, 0.35);
+  background: #0d1813;
+}
+
+/* Nodes Container */
+.n8n-nodes-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2400px;
+  height: 1600px;
+  z-index: 20;
+}
+
+/* Minimalist Card Node */
+.n8n-node-card {
+  position: absolute;
+  width: 240px;
+  background: #121215;
+  border: 1px solid #27272a;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  cursor: pointer;
+  user-select: none;
+}
+
+.n8n-node-card:hover {
+  border-color: #3f3f46;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  transform: translateY(-1px);
+}
+
+.n8n-node-card.selected {
+  border-color: #f4f4f5;
+  box-shadow: 0 0 0 1px #f4f4f5, 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+/* Ports */
+.n8n-node-port {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #18181b;
+  border: 1.5px solid #52525b;
+  z-index: 30;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.n8n-port-in {
+  left: -5px;
   top: 50%;
   transform: translateY(-50%);
 }
 
-/* Component Box */
-.vgraph-component-card {
-  width: 100%;
-  background: var(--vscode-editorWidget-background, rgba(0, 0, 0, 0.1));
-  border: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.25));
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+.n8n-port-out {
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
-.vgraph-component-header {
-  background: rgba(128, 128, 128, 0.08);
-  padding: 6px 10px;
+.n8n-node-card:hover .n8n-node-port {
+  border-color: #f4f4f5;
+  background: #27272a;
+}
+
+/* Node Header */
+.n8n-node-header {
+  padding: 7px 10px;
+  border-bottom: 1px solid #1f1f23;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.15));
 }
 
-.vgraph-comp-title {
-  display: flex;
+.n8n-node-category {
+  font-size: 9px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #71717a;
+}
+
+.n8n-node-badge {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-weight: 700;
-  font-size: 11px;
-  letter-spacing: 0.5px;
+  gap: 4px;
+  font-size: 9px;
+  font-family: var(--vscode-editor-font-family, monospace);
+  color: #a1a1aa;
 }
 
-.vgraph-findings-timeline {
-  padding: 10px;
+.badge-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #71717a;
+}
+.badge-dot.green { background: #22c55e; }
+.badge-dot.red { background: #ef4444; }
+.badge-dot.amber { background: #f59e0b; }
+.badge-dot.blue { background: #60a5fa; }
+
+/* Node Body */
+.n8n-node-body {
+  padding: 9px 10px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-
-/* Node Step Cards */
-.vstep-card {
-  background: var(--vscode-editor-background);
-  border-radius: 6px;
-  padding: 8px 10px;
-  border: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.2));
-  transition: all 0.15s ease;
-}
-
-.vstep-card:hover {
-  border-color: var(--vscode-focusBorder, #007acc);
-}
-
-.vstep-break {
-  border-left: 3px solid #ef4444;
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, transparent 100%);
-}
-
-.vstep-fix {
-  border-left: 3px solid #0ea5e9;
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, transparent 100%);
-}
-
-.vstep-verified {
-  border-left: 3px solid #10b981;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, transparent 100%);
-}
-
-.vstep-pending {
-  border-left: 3px solid #f59e0b;
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, transparent 100%);
-}
-
-.vstep-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 5px;
-}
-
-.vstep-badge {
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
-  padding: 2px 6px;
-  border-radius: 3px;
-  letter-spacing: 0.3px;
-}
-
-.badge-break {
-  background: rgba(239, 68, 68, 0.2);
-  color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.4);
-}
-
-.badge-fix {
-  background: rgba(14, 165, 233, 0.2);
-  color: #38bdf8;
-  border: 1px solid rgba(14, 165, 233, 0.4);
-}
-
-.badge-verified {
-  background: rgba(16, 185, 129, 0.2);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.4);
-}
-
-.badge-pending {
-  background: rgba(245, 158, 11, 0.2);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.4);
-}
-
-.vstep-title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--vscode-foreground);
-  line-height: 1.4;
-  margin-bottom: 4px;
-}
-
-.vstep-file-row {
-  display: flex;
-  align-items: center;
   gap: 5px;
-  font-size: 10px;
+}
+
+.n8n-node-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #f4f4f5;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.n8n-node-desc {
+  font-size: 10.5px;
+  color: #a1a1aa;
+  line-height: 1.4;
+}
+
+.n8n-code-chip {
+  background: #09090b;
+  border: 1px solid #1f1f23;
+  border-radius: 4px;
+  padding: 4px 6px;
   font-family: var(--vscode-editor-font-family, monospace);
-  color: var(--vscode-textLink-foreground);
-  margin-bottom: 4px;
+  font-size: 9.5px;
+  color: #a1a1aa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
 }
 
-.vstep-text {
-  font-size: 11px;
-  opacity: 0.85;
-  line-height: 1.45;
-}
-
-/* Arrow Transition between Steps */
-.vstep-arrow {
+/* Node Footer */
+.n8n-node-footer {
+  padding: 5px 10px;
+  border-top: 1px solid #1f1f23;
   display: flex;
-  justify-content: center;
   align-items: center;
-  gap: 6px;
-  color: var(--vscode-foreground);
-  opacity: 0.45;
-  font-size: 10px;
-  margin: -2px 0;
+  justify-content: space-between;
+  border-radius: 0 0 7px 7px;
+  background: #0f0f12;
+  font-size: 9.5px;
+  color: #71717a;
 }
+
+.n8n-btn-action {
+  font-size: 9.5px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid #27272a;
+  background: transparent;
+  color: #d4d4d8;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.n8n-btn-action:hover {
+  background: #27272a;
+  color: #f4f4f5;
+}
+
+.n8n-btn-apply {
+  background: #18181b;
+  border-color: #3f3f46;
+  color: #38bdf8;
+}
+
+.n8n-btn-apply:hover {
+  background: #27272a;
+  border-color: #52525b;
+}
+
+/* Node Specific Borders */
+.n8n-node-break {
+  border-color: rgba(239, 68, 68, 0.35);
+}
+.n8n-node-break:hover {
+  border-color: rgba(239, 68, 68, 0.65);
+}
+
+.n8n-node-verify {
+  border-color: rgba(34, 197, 94, 0.35);
+}
+.n8n-node-verify:hover {
+  border-color: rgba(34, 197, 94, 0.65);
+}
+
+
 
 
 

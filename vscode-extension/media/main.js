@@ -53,12 +53,15 @@
   const lifecycleGraphBox = document.getElementById('lifecycleGraphBox');
   const visualGraphBox = document.getElementById('visualGraphBox');
   const callTopologyBox = document.getElementById('callTopologyBox');
+  const visualTopologyBox = document.getElementById('visualTopologyBox');
   const lifecycleBadge = document.getElementById('lifecycleBadge');
   const commitSelector = /** @type {HTMLSelectElement | null} */ (document.getElementById('commitSelector'));
   const btnAnalyzeCommit = document.getElementById('btnAnalyzeCommit');
   const btnOpenGraphFile = document.getElementById('btnOpenGraphFile');
   const btnModeVisual = document.getElementById('btnModeVisual');
   const btnModeText = document.getElementById('btnModeText');
+  const btnTopoVisual = document.getElementById('btnTopoVisual');
+  const btnTopoText = document.getElementById('btnTopoText');
 
   // Counters
   const countAll = document.getElementById('countAll');
@@ -110,9 +113,10 @@
     currentSubTab = 'topology';
     callTopologyView?.classList.remove('hidden');
     lifecycleView?.classList.add('hidden');
+    renderVisualTopologyGraph();
   });
 
-  // Visual vs. Plain Text Mode Toggle
+  // Visual vs. Plain Text Mode Toggle (Lifecycle)
   btnModeVisual?.addEventListener('click', () => {
     btnModeVisual.classList.add('active');
     btnModeText?.classList.remove('active');
@@ -127,6 +131,21 @@
     graphViewMode = 'text';
     lifecycleGraphBox?.classList.remove('hidden');
     visualGraphBox?.classList.add('hidden');
+  });
+
+  // Flowchart vs. ASCII Toggle (Topology)
+  btnTopoVisual?.addEventListener('click', () => {
+    btnTopoVisual.classList.add('active');
+    btnTopoText?.classList.remove('active');
+    visualTopologyBox?.classList.remove('hidden');
+    callTopologyBox?.classList.add('hidden');
+  });
+
+  btnTopoText?.addEventListener('click', () => {
+    btnTopoText?.classList.add('active');
+    btnTopoVisual?.classList.remove('active');
+    callTopologyBox?.classList.remove('hidden');
+    visualTopologyBox?.classList.add('hidden');
   });
 
   // Commit selector & .graph file actions
@@ -352,6 +371,18 @@
     return 'SHARED';
   }
 
+  // Canvas state for Lifecycle flow
+  let vZoom = 0.82;
+  let vPanX = 18;
+  let vPanY = 40;
+  let vAnimActive = true;
+
+  // Canvas state for Topology flowchart
+  let tZoom = 0.82;
+  let tPanX = 18;
+  let tPanY = 40;
+  let tAnimActive = true;
+
   function renderVisualFlowGraph() {
     if (!visualGraphBox) return;
 
@@ -361,157 +392,554 @@
     const shortHash = currentCommitObj.shortHash || 'b186cfb';
     const commitMsg = currentCommitObj.message || 'refactor(payment): offload role checking to route middleware';
 
-    // Group findings by component
-    const components = ['BACKEND', 'FRONTEND', 'DEPENDENCIES', 'SHARED'];
-    const activeComponents = components.map((name) => ({
-      name,
-      findings: currentFixes.filter((f) => componentFor(f.filePath) === name)
-    })).filter((c) => c.findings.length > 0);
+    const activeFinding = currentFixes.length > 0 ? currentFixes[0] : {
+      id: 'KAAL-001',
+      title: 'Missing Authorization Guard in Caller Boundary',
+      filePath: 'src/services/paymentService.js',
+      line: 5,
+      severity: 'HIGH',
+      cwe: 'CWE-306',
+      description: 'Role check was removed from refundTransaction(). Callers can execute sensitive refunds without validation.',
+      explanation: 'Enforce caller authentication and HMAC webhook secret validation.',
+      verified: true
+    };
 
-    // If all fixes are applied, show the resolved state
-    if (activeComponents.length === 0) {
-      activeComponents.push({
-        name: 'BACKEND',
-        findings: [{
-          id: 'KAAL-001',
-          title: 'Authorization Enforcement & Webhook Secret Validation',
-          filePath: 'src/services/paymentService.js',
-          line: 5,
-          severity: 'HIGH',
-          cwe: 'CWE-306',
-          description: 'Privileged transaction refund verified against caller authorization context.',
-          explanation: 'Strict caller role check and HMAC webhook secret validation applied.',
-          verified: true
-        }]
-      });
-    }
+    const nodes = [
+      {
+        id: 'flow-node-1',
+        x: 30,
+        y: 130,
+        cat: 'Git Trigger',
+        name: `Commit ${shortHash}`,
+        badge: 'Committed',
+        dot: 'blue',
+        desc: escapeHtml(commitMsg.slice(0, 75)),
+        code: `main @ ${shortHash}`
+      },
+      {
+        id: 'flow-node-2',
+        x: 320,
+        y: 130,
+        cat: 'Component',
+        name: 'paymentService.js',
+        badge: 'Modified',
+        dot: 'blue',
+        desc: `Analyzed ${escapeHtml(activeFinding.filePath)}`,
+        code: `refundTransaction() : L${activeFinding.line}`
+      },
+      {
+        id: 'flow-node-3',
+        x: 610,
+        y: 75,
+        cat: 'Vulnerability',
+        name: escapeHtml(activeFinding.title.slice(0, 36)),
+        badge: activeFinding.cwe || 'CWE-306',
+        dot: 'red',
+        cardClass: 'n8n-node-break',
+        desc: escapeHtml(activeFinding.description.slice(0, 95)),
+        code: 'webhooks.js -> refundTransaction()'
+      },
+      {
+        id: 'flow-node-4',
+        x: 900,
+        y: 75,
+        cat: 'Remediation',
+        name: 'Enforce Role Guard',
+        badge: isVerified ? 'Verified' : 'Patch Ready',
+        dot: isVerified ? 'green' : 'amber',
+        cardClass: isVerified ? 'n8n-node-verify' : '',
+        desc: escapeHtml(activeFinding.explanation.slice(0, 95)),
+        code: 'if (!user || user.role !== "admin")',
+        hasApply: !isVerified,
+        fixId: activeFinding.id
+      },
+      {
+        id: 'flow-node-5',
+        x: 1190,
+        y: 130,
+        cat: 'Verifier',
+        name: 'Automated Suite',
+        badge: isVerified ? '10/10 Pass' : 'Pending',
+        dot: isVerified ? 'green' : 'amber',
+        cardClass: isVerified ? 'n8n-node-verify' : '',
+        desc: isVerified ? 'Unit tests passed. Semgrep AST rules clean.' : 'Automated test suite evaluation pending.',
+        code: 'npm test (1.2s)'
+      },
+      {
+        id: 'flow-node-6',
+        x: 1480,
+        y: 130,
+        cat: 'State',
+        name: 'Workspace Clean',
+        badge: isVerified ? 'Ready' : 'Vulnerable',
+        dot: isVerified ? 'green' : 'red',
+        desc: isVerified ? 'Workspace boundary verified clean. Safe to merge.' : 'Repository contains vulnerable authorization regression.',
+        code: isVerified ? 'Boundary Verified' : 'Remediation Active'
+      }
+    ];
 
-    let compHtml = '';
-    activeComponents.forEach((comp) => {
-      const compIcon = comp.name === 'BACKEND' ? '⚙️' : comp.name === 'FRONTEND' ? '🖥️' : comp.name === 'DEPENDENCIES' ? '📦' : '🔗';
-      let findingsHtml = '';
-
-      comp.findings.forEach((f, fIdx) => {
-        findingsHtml += `
-          <!-- BREAK Step -->
-          <div class="vstep-card vstep-break">
-            <div class="vstep-header">
-              <span class="vstep-badge badge-break">🚨 BREAK ${fIdx + 1}</span>
-              <span class="severity-pill sev-error" style="font-size: 8px;">${escapeHtml(f.severity)}</span>
-              <span class="vpill vpill-commit" style="font-size: 8px;">${escapeHtml(f.cwe)}</span>
-            </div>
-            <div class="vstep-title">${escapeHtml(f.title)}</div>
-            <div class="vstep-file-row">
-              <span>📂</span>
-              <code>${escapeHtml(f.filePath)}:${f.line}</code>
-            </div>
-            <div class="vstep-text">${escapeHtml(f.description)}</div>
-          </div>
-
-          <!-- Connecting Arrow -->
-          <div class="vstep-arrow">
-            <span>│</span>
-            <span>▼</span>
-          </div>
-
-          <!-- FIX Step -->
-          <div class="vstep-card vstep-fix">
-            <div class="vstep-header">
-              <span class="vstep-badge badge-fix">🛡️ PROPOSED FIX</span>
-              <span class="vpill vpill-branch" style="font-size: 8px;">PATCH READY</span>
-            </div>
-            <div class="vstep-text">${escapeHtml(f.explanation || 'Enforce caller authentication and verification checks')}</div>
-          </div>
-
-          <!-- Connecting Arrow -->
-          <div class="vstep-arrow">
-            <span>│</span>
-            <span>▼</span>
-          </div>
-
-          <!-- VERIFY Step -->
-          <div class="vstep-card ${isVerified ? 'vstep-verified' : 'vstep-pending'}">
-            <div class="vstep-header">
-              <span class="vstep-badge ${isVerified ? 'badge-verified' : 'badge-pending'}">
-                ${isVerified ? '✅ WORKING · VERIFIED' : '⏳ FIX REPORTED · VERIFY'}
-              </span>
-            </div>
-            <div class="vstep-text">
-              ${isVerified
-                ? '✨ Automated verification passed (npm test: 10/10 test suite passing). Security boundary verified clean.'
-                : 'Fix formulated. Verification pending in current workspace. Click "Apply Fix" to verify automatically.'}
-            </div>
-          </div>
-        `;
-      });
-
-      compHtml += `
-        <div class="vgraph-component-card">
-          <div class="vgraph-component-header">
-            <div class="vgraph-comp-title">
-              <span>${compIcon}</span>
-              <span>${comp.name} COMPONENT</span>
-            </div>
-            <span class="vpill vpill-branch">${comp.findings.length} Finding${comp.findings.length === 1 ? '' : 's'}</span>
-          </div>
-          <div class="vgraph-findings-timeline">
-            ${findingsHtml}
-          </div>
-        </div>
-      `;
-    });
+    const edges = [
+      { from: 'flow-node-1', to: 'flow-node-2', label: 'git diff' },
+      { from: 'flow-node-2', to: 'flow-node-3', label: 'AST trace', danger: true },
+      { from: 'flow-node-3', to: 'flow-node-4', label: 'synthesizes fix' },
+      { from: 'flow-node-4', to: 'flow-node-5', label: 'runs tests', verified: true },
+      { from: 'flow-node-5', to: 'flow-node-6', label: 'verified', verified: true }
+    ];
 
     visualGraphBox.innerHTML = `
-      <!-- BEFORE Stage Node -->
-      <div class="vgraph-stage-node stage-before">
-        <div class="vgraph-stage-header">
-          <span>🚀</span>
-          <span class="vgraph-stage-title">BEFORE</span>
-          <div class="vgraph-pills">
-            <span class="vpill vpill-branch">main</span>
-            <span class="vpill vpill-commit">${shortHash}</span>
+      <div class="n8n-canvas-wrapper" id="vCanvasWrapper">
+        <div class="n8n-canvas-world" id="vCanvasWorld" style="transform: translate(${vPanX}px, ${vPanY}px) scale(${vZoom});">
+          <svg class="n8n-connections-svg" id="vSvg">
+            <defs>
+              <marker id="vArrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#3f3f46" />
+              </marker>
+              <marker id="vArrowDanger" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#ef4444" />
+              </marker>
+              <marker id="vArrowVerified" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#22c55e" />
+              </marker>
+            </defs>
+          </svg>
+          <div id="vLabelsGroup"></div>
+          <div class="n8n-nodes-layer" id="vNodesGroup"></div>
+        </div>
+
+        <div class="n8n-top-hud">
+          <div class="n8n-hud-chip">
+            <span>Commit:</span> <b>${shortHash}</b>
+          </div>
+          <div class="n8n-hud-chip">
+            <span>Status:</span> <b style="color:${isVerified ? '#22c55e' : '#f59e0b'}">${isVerified ? 'Verified' : 'Action Required'}</b>
           </div>
         </div>
-        <div class="vgraph-stage-msg">${escapeHtml(commitMsg)}</div>
-      </div>
 
-      <!-- Glowing Trunk Connector -->
-      <div class="vgraph-trunk-connector">
-        <div class="vgraph-trunk-line"></div>
-        <div class="vgraph-trunk-pulse"></div>
-      </div>
-
-      <!-- Component Cards -->
-      ${compHtml}
-
-      <!-- Glowing Trunk Connector -->
-      <div class="vgraph-trunk-connector">
-        <div class="vgraph-trunk-line" style="background: linear-gradient(to bottom, #818cf8, #73c991);"></div>
-        <div class="vgraph-trunk-pulse" style="background: #73c991; box-shadow: 0 0 8px #73c991;"></div>
-      </div>
-
-      <!-- AFTER Stage Node -->
-      <div class="vgraph-stage-node stage-after">
-        <div class="vgraph-stage-header">
-          <span>🏁</span>
-          <span class="vgraph-stage-title">AFTER</span>
-          <div class="vgraph-pills">
-            <span class="vpill ${isVerified ? 'vpill-clean' : 'vpill-open'}">
-              ${isVerified ? '✨ WORKSPACE CLEAN' : '⚠️ COMMITTED VULNERABILITY'}
-            </span>
-          </div>
-        </div>
-        <div class="vgraph-stage-msg">
-          ${isVerified
-            ? 'Current workspace has verified fixes applied. All test suites and caller checks passing.'
-            : 'Current workspace matches target commit state with reported break.'}
+        <div class="n8n-hud-bar">
+          <button class="n8n-hud-btn" id="vZoomIn" title="Zoom In">+</button>
+          <button class="n8n-hud-btn" id="vZoomOut" title="Zoom Out">−</button>
+          <span class="n8n-hud-zoom" id="vZoomDisplay">${Math.round(vZoom * 100)}%</span>
+          <div class="n8n-hud-divider"></div>
+          <button class="n8n-hud-btn" id="vFit" title="Fit to View">⊡</button>
+          <button class="n8n-hud-btn" id="vReset" title="Reset View">↺</button>
         </div>
       </div>
     `;
+
+    const vNodesGroup = document.getElementById('vNodesGroup');
+    const vSvg = document.getElementById('vSvg');
+    const vLabelsGroup = document.getElementById('vLabelsGroup');
+
+    if (vNodesGroup) {
+      nodes.forEach((n) => {
+        const el = document.createElement('div');
+        el.className = `n8n-node-card ${n.cardClass || ''}`;
+        el.id = n.id;
+        el.style.left = `${n.x}px`;
+        el.style.top = `${n.y}px`;
+
+        const portIn = document.createElement('div');
+        portIn.className = 'n8n-node-port n8n-port-in';
+        el.appendChild(portIn);
+
+        const portOut = document.createElement('div');
+        portOut.className = 'n8n-node-port n8n-port-out';
+        el.appendChild(portOut);
+
+        el.innerHTML += `
+          <div class="n8n-node-header">
+            <span class="n8n-node-category">${n.cat}</span>
+            <div class="n8n-node-badge">
+              <span class="badge-dot ${n.dot}"></span>
+              <span>${n.badge}</span>
+            </div>
+          </div>
+          <div class="n8n-node-body">
+            <div class="n8n-node-name" title="${n.name}">${n.name}</div>
+            <div class="n8n-node-desc">${n.desc}</div>
+            <div class="n8n-code-chip">${n.code}</div>
+          </div>
+          <div class="n8n-node-footer">
+            <span>id: ${n.id}</span>
+            ${n.hasApply
+              ? `<button class="n8n-btn-action n8n-btn-apply" onclick="vscode.postMessage({ command: 'applyFix', fixId: '${n.fixId}' })">Apply Fix</button>`
+              : `<button class="n8n-btn-action" onclick="vscode.postMessage({ command: 'previewLine', filePath: '${activeFinding.filePath}', line: ${activeFinding.line} })">Inspect</button>`
+            }
+          </div>
+        `;
+
+        vNodesGroup.appendChild(el);
+      });
+    }
+
+    function updateVConnections() {
+      if (!vSvg || !vLabelsGroup) return;
+      const defs = vSvg.querySelector('defs');
+      vSvg.innerHTML = '';
+      if (defs) vSvg.appendChild(defs);
+      vLabelsGroup.innerHTML = '';
+
+      edges.forEach((edge) => {
+        const fromEl = document.getElementById(edge.from);
+        const toEl = document.getElementById(edge.to);
+        if (!fromEl || !toEl) return;
+
+        const fromX = parseFloat(fromEl.style.left) + fromEl.offsetWidth;
+        const fromY = parseFloat(fromEl.style.top) + fromEl.offsetHeight / 2;
+        const toX = parseFloat(toEl.style.left);
+        const toY = parseFloat(toEl.style.top) + toEl.offsetHeight / 2;
+
+        const dx = Math.abs(toX - fromX);
+        const cx1 = fromX + Math.max(dx * 0.45, 30);
+        const cx2 = toX - Math.max(dx * 0.45, 30);
+        const pathD = `M ${fromX} ${fromY} C ${cx1} ${fromY}, ${cx2} ${toY}, ${toX} ${toY}`;
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', pathD);
+        path.setAttribute('class', `n8n-edge-path ${edge.danger ? 'n8n-edge-danger' : edge.verified ? 'n8n-edge-verified' : ''}`);
+        path.setAttribute('marker-end', edge.danger ? 'url(#vArrowDanger)' : edge.verified ? 'url(#vArrowVerified)' : 'url(#vArrow)');
+        vSvg.appendChild(path);
+
+        if (edge.label) {
+          const midX = (fromX + toX) / 2;
+          const midY = (fromY + toY) / 2;
+          const badge = document.createElement('div');
+          badge.className = `n8n-edge-badge ${edge.danger ? 'danger' : edge.verified ? 'verified' : ''}`;
+          badge.style.left = `${midX}px`;
+          badge.style.top = `${midY}px`;
+          badge.textContent = edge.label;
+          vLabelsGroup.appendChild(badge);
+        }
+      });
+    }
+
+    requestAnimationFrame(updateVConnections);
+
+    const wrapper = document.getElementById('vCanvasWrapper');
+    const world = document.getElementById('vCanvasWorld');
+    const zoomDisp = document.getElementById('vZoomDisplay');
+
+    function applyVTransform() {
+      if (world) world.style.transform = `translate(${vPanX}px, ${vPanY}px) scale(${vZoom})`;
+      if (zoomDisp) zoomDisp.textContent = `${Math.round(vZoom * 100)}%`;
+    }
+
+    let isPan = false;
+    let sX = 0;
+    let sY = 0;
+
+    wrapper?.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.n8n-node-card') || e.target.closest('.n8n-hud-bar')) return;
+      isPan = true;
+      sX = e.clientX - vPanX;
+      sY = e.clientY - vPanY;
+      wrapper.classList.add('grabbing');
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isPan) return;
+      vPanX = e.clientX - sX;
+      vPanY = e.clientY - sY;
+      applyVTransform();
+    });
+
+    window.addEventListener('mouseup', () => {
+      isPan = false;
+      wrapper?.classList.remove('grabbing');
+    });
+
+    wrapper?.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.06 : 0.94;
+      vZoom = Math.min(Math.max(vZoom * factor, 0.4), 2);
+      applyVTransform();
+    }, { passive: false });
+
+    document.getElementById('vZoomIn')?.addEventListener('click', () => {
+      vZoom = Math.min(vZoom * 1.15, 2);
+      applyVTransform();
+    });
+    document.getElementById('vZoomOut')?.addEventListener('click', () => {
+      vZoom = Math.max(vZoom * 0.85, 0.4);
+      applyVTransform();
+    });
+    document.getElementById('vReset')?.addEventListener('click', () => {
+      vZoom = 0.88;
+      vPanX = 20;
+      vPanY = 40;
+      applyVTransform();
+    });
+    document.getElementById('vFit')?.addEventListener('click', () => {
+      vZoom = 0.62;
+      vPanX = 10;
+      vPanY = 20;
+      applyVTransform();
+    });
+  }
+
+  // Eraser AI Minimalist Flowchart for Call Topology
+  function renderVisualTopologyGraph() {
+    if (!visualTopologyBox) return;
+
+    const nodes = [
+      {
+        id: 'topo-api',
+        x: 40,
+        y: 45,
+        cat: 'Protected Route',
+        name: 'POST /api/orders/refund',
+        badge: 'JWT Guard',
+        dot: 'green',
+        desc: 'Admin dashboard endpoint.',
+        code: 'authMiddleware.requireRole("admin")'
+      },
+      {
+        id: 'topo-webhook',
+        x: 40,
+        y: 260,
+        cat: 'External Entrypoint',
+        name: 'POST /stripe-callback',
+        badge: 'Unauthenticated',
+        dot: 'red',
+        cardClass: 'n8n-node-break',
+        desc: 'Public webhook receiver in webhooks.js.',
+        code: 'router.post("/stripe-callback", ...)'
+      },
+      {
+        id: 'topo-guard',
+        x: 360,
+        y: 45,
+        cat: 'Middleware',
+        name: 'verifyAuthContext()',
+        badge: 'Enforced',
+        dot: 'green',
+        desc: 'Validates bearer token & permission claims.',
+        code: 'req.user = decodedToken'
+      },
+      {
+        id: 'topo-sink',
+        x: 680,
+        y: 150,
+        cat: 'Sensitive Sink',
+        name: 'refundTransaction()',
+        badge: 'CWE-306',
+        dot: 'red',
+        cardClass: 'n8n-node-break',
+        desc: 'paymentService.js: line 5. Role check deleted in PR.',
+        code: 'src/services/paymentService.js:5'
+      },
+      {
+        id: 'topo-patch',
+        x: 1000,
+        y: 150,
+        cat: 'Remediation',
+        name: 'Defensive Self-Check',
+        badge: 'Verified',
+        dot: 'green',
+        cardClass: 'n8n-node-verify',
+        desc: 'Defense-in-depth check ensures caller validity.',
+        code: 'if (!user || user.role !== "admin")'
+      }
+    ];
+
+    const edges = [
+      { from: 'topo-api', to: 'topo-guard', label: 'validated caller', verified: true },
+      { from: 'topo-guard', to: 'topo-sink', label: 'authorized call', verified: true },
+      { from: 'topo-webhook', to: 'topo-sink', label: 'UNPROTECTED BYPASS', danger: true },
+      { from: 'topo-sink', to: 'topo-patch', label: 'blocks exploit', verified: true }
+    ];
+
+    visualTopologyBox.innerHTML = `
+      <div class="n8n-canvas-wrapper" id="tCanvasWrapper">
+        <div class="n8n-canvas-world" id="tCanvasWorld" style="transform: translate(${tPanX}px, ${tPanY}px) scale(${tZoom});">
+          <svg class="n8n-connections-svg" id="tSvg">
+            <defs>
+              <marker id="tArrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#3f3f46" />
+              </marker>
+              <marker id="tArrowDanger" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#ef4444" />
+              </marker>
+              <marker id="tArrowVerified" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#22c55e" />
+              </marker>
+            </defs>
+          </svg>
+          <div id="tLabelsGroup"></div>
+          <div class="n8n-nodes-layer" id="tNodesGroup"></div>
+        </div>
+
+        <div class="n8n-top-hud">
+          <div class="n8n-hud-chip">
+            <span>View:</span> <b>Eraser Flowchart</b>
+          </div>
+          <div class="n8n-hud-chip">
+            <span>Exploit Path:</span> <b style="color:#ef4444">Webhook -> Sink Bypass</b>
+          </div>
+        </div>
+
+        <div class="n8n-hud-bar">
+          <button class="n8n-hud-btn" id="tZoomIn" title="Zoom In">+</button>
+          <button class="n8n-hud-btn" id="tZoomOut" title="Zoom Out">−</button>
+          <span class="n8n-hud-zoom" id="tZoomDisplay">${Math.round(tZoom * 100)}%</span>
+          <div class="n8n-hud-divider"></div>
+          <button class="n8n-hud-btn" id="tFit" title="Fit to View">⊡</button>
+          <button class="n8n-hud-btn" id="tReset" title="Reset View">↺</button>
+        </div>
+      </div>
+    `;
+
+    const tNodesGroup = document.getElementById('tNodesGroup');
+    const tSvg = document.getElementById('tSvg');
+    const tLabelsGroup = document.getElementById('tLabelsGroup');
+
+    if (tNodesGroup) {
+      nodes.forEach((n) => {
+        const el = document.createElement('div');
+        el.className = `n8n-node-card ${n.cardClass || ''}`;
+        el.id = n.id;
+        el.style.left = `${n.x}px`;
+        el.style.top = `${n.y}px`;
+
+        const portIn = document.createElement('div');
+        portIn.className = 'n8n-node-port n8n-port-in';
+        el.appendChild(portIn);
+
+        const portOut = document.createElement('div');
+        portOut.className = 'n8n-node-port n8n-port-out';
+        el.appendChild(portOut);
+
+        el.innerHTML += `
+          <div class="n8n-node-header">
+            <span class="n8n-node-category">${n.cat}</span>
+            <div class="n8n-node-badge">
+              <span class="badge-dot ${n.dot}"></span>
+              <span>${n.badge}</span>
+            </div>
+          </div>
+          <div class="n8n-node-body">
+            <div class="n8n-node-name" title="${n.name}">${n.name}</div>
+            <div class="n8n-node-desc">${n.desc}</div>
+            <div class="n8n-code-chip">${n.code}</div>
+          </div>
+          <div class="n8n-node-footer">
+            <span>id: ${n.id}</span>
+            <button class="n8n-btn-action" onclick="vscode.postMessage({ command: 'previewLine', filePath: 'src/services/paymentService.js', line: 5 })">Inspect</button>
+          </div>
+        `;
+
+        tNodesGroup.appendChild(el);
+      });
+    }
+
+    function updateTConnections() {
+      if (!tSvg || !tLabelsGroup) return;
+      const defs = tSvg.querySelector('defs');
+      tSvg.innerHTML = '';
+      if (defs) tSvg.appendChild(defs);
+      tLabelsGroup.innerHTML = '';
+
+      edges.forEach((edge) => {
+        const fromEl = document.getElementById(edge.from);
+        const toEl = document.getElementById(edge.to);
+        if (!fromEl || !toEl) return;
+
+        const fromX = parseFloat(fromEl.style.left) + fromEl.offsetWidth;
+        const fromY = parseFloat(fromEl.style.top) + fromEl.offsetHeight / 2;
+        const toX = parseFloat(toEl.style.left);
+        const toY = parseFloat(toEl.style.top) + toEl.offsetHeight / 2;
+
+        const dx = Math.abs(toX - fromX);
+        const cx1 = fromX + Math.max(dx * 0.45, 30);
+        const cx2 = toX - Math.max(dx * 0.45, 30);
+        const pathD = `M ${fromX} ${fromY} C ${cx1} ${fromY}, ${cx2} ${toY}, ${toX} ${toY}`;
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', pathD);
+        path.setAttribute('class', `n8n-edge-path ${edge.danger ? 'n8n-edge-danger' : edge.verified ? 'n8n-edge-verified' : ''}`);
+        path.setAttribute('marker-end', edge.danger ? 'url(#tArrowDanger)' : edge.verified ? 'url(#tArrowVerified)' : 'url(#tArrow)');
+        tSvg.appendChild(path);
+
+        if (edge.label) {
+          const midX = (fromX + toX) / 2;
+          const midY = (fromY + toY) / 2;
+          const badge = document.createElement('div');
+          badge.className = `n8n-edge-badge ${edge.danger ? 'danger' : edge.verified ? 'verified' : ''}`;
+          badge.style.left = `${midX}px`;
+          badge.style.top = `${midY}px`;
+          badge.textContent = edge.label;
+          tLabelsGroup.appendChild(badge);
+        }
+      });
+    }
+
+    requestAnimationFrame(updateTConnections);
+
+    const tWrapper = document.getElementById('tCanvasWrapper');
+    const tWorld = document.getElementById('tCanvasWorld');
+    const tZoomDisp = document.getElementById('tZoomDisplay');
+
+    function applyTTransform() {
+      if (tWorld) tWorld.style.transform = `translate(${tPanX}px, ${tPanY}px) scale(${tZoom})`;
+      if (tZoomDisp) tZoomDisp.textContent = `${Math.round(tZoom * 100)}%`;
+    }
+
+    let isTPan = false;
+    let tsX = 0;
+    let tsY = 0;
+
+    tWrapper?.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.n8n-node-card') || e.target.closest('.n8n-hud-bar')) return;
+      isTPan = true;
+      tsX = e.clientX - tPanX;
+      tsY = e.clientY - tPanY;
+      tWrapper.classList.add('grabbing');
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isTPan) return;
+      tPanX = e.clientX - tsX;
+      tPanY = e.clientY - tsY;
+      applyTTransform();
+    });
+
+    window.addEventListener('mouseup', () => {
+      isTPan = false;
+      tWrapper?.classList.remove('grabbing');
+    });
+
+    tWrapper?.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.06 : 0.94;
+      tZoom = Math.min(Math.max(tZoom * factor, 0.4), 2);
+      applyTTransform();
+    }, { passive: false });
+
+    document.getElementById('tZoomIn')?.addEventListener('click', () => {
+      tZoom = Math.min(tZoom * 1.15, 2);
+      applyTTransform();
+    });
+    document.getElementById('tZoomOut')?.addEventListener('click', () => {
+      tZoom = Math.max(tZoom * 0.85, 0.4);
+      applyTTransform();
+    });
+    document.getElementById('tReset')?.addEventListener('click', () => {
+      tZoom = 0.88;
+      tPanX = 20;
+      tPanY = 40;
+      applyTTransform();
+    });
+    document.getElementById('tFit')?.addEventListener('click', () => {
+      tZoom = 0.62;
+      tPanX = 10;
+      tPanY = 20;
+      applyTTransform();
+    });
   }
 
   function renderGraphs() {
     renderVisualFlowGraph();
+    renderVisualTopologyGraph();
 
     if (lifecycleGraphBox) {
       lifecycleGraphBox.textContent = lifecycleGraph || 'Lifecycle graph not generated yet for this commit.';

@@ -233,6 +233,7 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
             totalIssues: fixes.length,
             graphSummary: data.subgraph?.graph_summary || '',
             asciiTree: data.subgraph?.ascii_tree || '',
+            subgraph: data.subgraph,
             lifecycleGraph: lifecycleGraph,
             gitCommits: gitCommits,
             fixes: fixes,
@@ -778,11 +779,18 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
 
       <!-- Subview 2: Call-Graph Topology (NetworkX / AST) -->
       <div id="callTopologyView" class="graph-content-view hidden">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 2px;">
-          <span style="font-size:11px; font-weight:600; color:var(--vscode-foreground);">AST Call-Graph & Routes</span>
-          <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; font-size: 9px;">ENTRYPOINT ANALYSIS</span>
+        <div class="vgraph-mode-bar">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-size:11px; font-weight:600; color:var(--vscode-foreground);">Call Topology & Attack Paths</span>
+            <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; font-size: 9px;">ERASER FLOWCHART</span>
+          </div>
+          <div class="vgraph-mode-toggle">
+            <button id="btnTopoVisual" class="mode-btn active" data-topomode="visual">🎨 Flowchart</button>
+            <button id="btnTopoText" class="mode-btn" data-topomode="text">📄 ASCII</button>
+          </div>
         </div>
-        <div id="callTopologyBox" class="code-graph-pre">Loading call graph topology...</div>
+        <div id="visualTopologyBox" class="vgraph-flow"></div>
+        <div id="callTopologyBox" class="code-graph-pre hidden">Loading call graph topology...</div>
       </div>
     </div>
 
