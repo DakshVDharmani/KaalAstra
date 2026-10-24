@@ -33,7 +33,7 @@ KaalAstra now ships a tiny **graph view** powered by the open‑source **Graphif
 
 ---
 
-## ðŸŒ‘ The Dark Age of Code
+## 🌑 The Dark Age of Code
 
 Modern software development runs on trust.
 
@@ -189,7 +189,7 @@ The envisioned experience prioritizes meaningful findings, contextual explanatio
 
 The architecture is conceptual and may evolve during implementation.
 
-## ðŸ› ï¸ Proposed Technology Stack
+## 🛠️ Proposed Technology Stack
 
 | Component | Technology |
 |---|---|
@@ -272,7 +272,7 @@ Installation instructions will be updated as the implementation progresses.
 - [ ] Package the VS Code extension
 - [ ] Publish the initial release
 
-## ðŸ” Security and Privacy Principles
+## 🔐 Security and Privacy Principles
 
 As a security-focused developer tool, KAALASTRA aims to follow security-first engineering practices.
 
