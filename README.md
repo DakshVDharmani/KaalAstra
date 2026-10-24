@@ -26,6 +26,30 @@ Traditional security workflows often discover vulnerabilities too late, after co
 
 That is the vision behind KAALASTRA.
 
+## Security before every push
+
+**A security check belongs in the path to production, not on a backlog after release.** A single unsafe change can expose credentials, customer data, money, or a trusted communication channel. Review code, dependencies, and behavior before merging or deploying. Recheck after fixes and upgrades.
+
+This mission is personal to us. Members of our community at **Vishwakarma Institute of Technology (VIT), Pune** report that the Training and Placement Office email account was compromised and misused. We have not found a public incident report confirming the scope, method, or root cause. In particular, **there is no evidence here that a PHP vulnerability caused that incident**. One compromised identity can make harmful messages appear credible.
+
+The wider threat is documented:
+
+- **PHP:** [CERT-In's April 2025 advisory](https://www.cert-in.org.in/s2cMainServlet?VLCODE=CIVN-2025-0063&pageid=PUBVLNOTES01) describes PHP vulnerabilities with possible security bypass, remote code execution, data manipulation, and denial of service.
+- **Node.js:** The [Node.js July 2025 security release](https://nodejs.org/en/blog/vulnerability/july-2025-security-releases) documents vulnerabilities in active release lines. Keep runtimes and dependencies current, and test upgrades before deployment.
+- **CBI cyber fraud case:** In [a July 2025 CBI case reported by India's Press Information Bureau](https://www.pib.gov.in/PressReleaseIframePage.aspx?PRID=2149124&lang=2&reg=48), investigators alleged that cyber victims' funds flowed into a mule account. This illustrates the cost of account abuse; it is **not** a claim that CBI systems or data were breached.
+- **Railway ticketing:** [Indian Railways reported](https://www.pib.gov.in/PressReleasePage.aspx?PRID=2227511&lang=1&reg=6) deactivating 3.03 crore suspicious user IDs in 2025 and described controls against unauthorized accounts and automated abuse. This is **not** evidence of a railway database breach.
+
+### Expectations for contributors and AI coding agents
+
+When changing this project or code analyzed with it:
+
+1. **Before pushing:** inspect changed files and dependencies for secrets, injection, unsafe deserialization, broken authentication or authorization, exposed endpoints, and insecure configuration. Check applicable security advisories.
+2. **Verify fixes:** run relevant tests and scans, review their output, and confirm the behavior behind each finding is addressed. Treat AI-generated patches as proposals until verified.
+3. **Report honestly:** distinguish confirmed findings from hypotheses, record affected files and evidence, and state what was not tested. Never turn an alleged incident into a proven breach or assign a cause without evidence.
+4. **Escalate serious findings:** call attention to credential exposure, exploitable vulnerabilities, and data access risks before a merge or release. Avoid publishing sensitive details or live credentials in reports.
+
+**Find the risk, fix it, verify it, then push.**
+
 ## ðŸ”± Why KAALASTRA?
 
 Inspired by Indian mythology and Sanskrit, KAALASTRA combines two powerful ideas:
