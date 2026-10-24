@@ -167,15 +167,53 @@
     vscode.postMessage({ command: 'openGraphFile' });
   });
 
+  // Engine Options Elements
+  let currentEngine = 'hybrid';
+  const btnOptHybrid = document.getElementById('btnOptHybrid');
+  const btnOptFinSec = document.getElementById('btnOptFinSec');
+  const btnOptBaseline = document.getElementById('btnOptBaseline');
+  const engineStatusBanner = document.getElementById('engineStatusBanner');
+
+  function setEngineMode(engine) {
+    currentEngine = engine;
+    [btnOptHybrid, btnOptFinSec, btnOptBaseline].forEach((b) => b?.classList.remove('active'));
+    if (engine === 'hybrid') {
+      btnOptHybrid?.classList.add('active');
+      if (engineStatusBanner) engineStatusBanner.innerHTML = 'Active: <b>Hybrid Sentinel</b> (AST + Graph + FinSec AI)';
+    } else if (engine === 'finsec') {
+      btnOptFinSec?.classList.add('active');
+      if (engineStatusBanner) engineStatusBanner.innerHTML = 'Active: <b>Pure FinSec-AI</b> (elsiddik/finsec_detector · Zero NLP JSON)';
+    } else if (engine === 'baseline') {
+      btnOptBaseline?.classList.add('active');
+      if (engineStatusBanner) engineStatusBanner.innerHTML = 'Active: <b>Diff-Only Baseline</b> (No Graph/Deep AI)';
+    }
+    const selectedHash = commitSelector ? commitSelector.value : 'HEAD';
+    vscode.postMessage({
+      command: 'scanActiveCommit',
+      baseline: engine === 'baseline',
+      commitRef: selectedHash,
+      engine: currentEngine
+    });
+  }
+
+  btnOptHybrid?.addEventListener('click', () => setEngineMode('hybrid'));
+  btnOptFinSec?.addEventListener('click', () => setEngineMode('finsec'));
+  btnOptBaseline?.addEventListener('click', () => setEngineMode('baseline'));
+
   // Action Buttons
   btnScan?.addEventListener('click', () => {
     if (activeFileNameEl) activeFileNameEl.textContent = 'Scanning commit...';
-    vscode.postMessage({ command: 'scanActiveCommit', baseline: false });
+    const selectedHash = commitSelector ? commitSelector.value : 'HEAD';
+    vscode.postMessage({
+      command: 'scanActiveCommit',
+      baseline: currentEngine === 'baseline',
+      commitRef: selectedHash,
+      engine: currentEngine
+    });
   });
 
   btnBaseline?.addEventListener('click', () => {
-    if (activeFileNameEl) activeFileNameEl.textContent = 'Scanning (Diff-Only Baseline)...';
-    vscode.postMessage({ command: 'scanActiveCommit', baseline: true });
+    setEngineMode('baseline');
   });
 
   btnFixAll?.addEventListener('click', () => {
@@ -183,7 +221,13 @@
   });
 
   btnSampleNoEditor?.addEventListener('click', () => {
-    vscode.postMessage({ command: 'scanActiveCommit', baseline: false });
+    const selectedHash = commitSelector ? commitSelector.value : 'HEAD';
+    vscode.postMessage({
+      command: 'scanActiveCommit',
+      baseline: currentEngine === 'baseline',
+      commitRef: selectedHash,
+      engine: currentEngine
+    });
   });
 
   btnCreateSample?.addEventListener('click', () => {

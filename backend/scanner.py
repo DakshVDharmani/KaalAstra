@@ -114,9 +114,19 @@ def run_semgrep_scan(repo_path: str, target_files: Optional[List[str]] = None) -
 
     return findings
 
-def run_all_scanners(repo_path: str, changed_files: List[str]) -> List[ScannerFinding]:
-    """Orchestrate all static and secret checks."""
+def run_finsec_scan(repo_path: str, target_files: Optional[List[str]] = None) -> List[ScannerFinding]:
+    """Run FineSec-AI (elsiddik/finsec_detector) code vulnerability detection."""
+    try:
+        from finsec_detector import scan_files_with_finsec
+        return scan_files_with_finsec(repo_path, target_files or [])
+    except Exception as e:
+        return []
+
+def run_all_scanners(repo_path: str, changed_files: List[str], enable_finsec: bool = False) -> List[ScannerFinding]:
+    """Orchestrate all static, AI and secret checks."""
     all_findings = []
     all_findings.extend(scan_secrets_in_files(repo_path, changed_files))
     all_findings.extend(run_semgrep_scan(repo_path, changed_files))
+    if enable_finsec:
+        all_findings.extend(run_finsec_scan(repo_path, changed_files))
     return all_findings

@@ -361,7 +361,10 @@ export class KaalAstraWebviewViewProvider implements vscode.WebviewViewProvider 
     });
 
     function runSseStream(baseline) {
-      const url = \`http://localhost:8000/api/scan/stream?repo_path=d%3A%2FAvdhut%2Fprograming%2FMetro%20Hackathon%2Fdemo-target&baseline=\${baseline}\`;
+      const url = 'http://localhost:8000/api/scan/stream?' + new URLSearchParams({
+        repo_path: \${JSON.stringify(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '.')},
+        baseline: String(baseline)
+      }).toString();
       const source = new EventSource(url);
 
       source.addEventListener('STAGE_PROGRESS', e => {

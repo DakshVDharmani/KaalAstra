@@ -176,23 +176,38 @@ The architecture is conceptual and may evolve during implementation.
 
 ## ðŸš€ Getting Started
 
-KAALASTRA is currently in its early development stage.
+The repository includes the Python analysis backend, the VS Code extension, and a payment gateway demo workspace. The backend and demo are stored directly in this repository so a clone is self-contained.
 
-Once the initial extension scaffold is available, the expected development workflow will be:
+Set up the Python environment and optional API keys:
 
 ```bash
-git clone https://github.com/<your-username>/<repository-name>.git
-cd <repository-name>
-npm install
+python -m venv .venv
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+# macOS/Linux: source .venv/bin/activate
+python -m pip install -r backend/requirements.txt
+cp .env.example .env
 ```
 
-Open the project in Visual Studio Code:
+Add your Gemini API key to `.env` to enable AI review. Tavily and Hugging Face tokens are optional. The scanner can run without those optional integrations, though AI review requires Gemini.
+
+Build and launch the VS Code extension:
 
 ```bash
+npm --prefix vscode-extension install
+npm --prefix vscode-extension run compile
 code .
 ```
 
-Run the build command defined in `package.json`, then launch the extension development host using the project's VS Code debug configuration.
+In VS Code, choose **Launch KaalAstra Extension** from Run and Debug (F5). It opens the bundled `demo-target` workspace. The extension locates `backend/cli.py` relative to the repository and runs scans against the open workspace, so no sibling folders or hard-coded machine paths are needed.
+
+To start the optional HTTP API from the repository root:
+
+```bash
+python backend/server.py
+```
+
+The API listens on `127.0.0.1` using `KAALASTRA_PORT` (default `8000`) and exposes `/health`, `/api/scan`, and `/api/scan/stream`.
 
 Installation instructions will be updated as the implementation progresses.
 
