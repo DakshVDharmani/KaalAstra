@@ -1,6 +1,6 @@
 # KAALASTRA
 
-### à¤•à¤¾à¤²à¤¾à¤¸à¥à¤¤à¥à¤° â€” The Weapon Against the Dark Age of Code
+### The Weapon Against the Dark Age of Code
 
 **October went dark. KAALASTRA awakened.**
 
