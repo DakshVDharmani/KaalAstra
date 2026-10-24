@@ -152,6 +152,31 @@ vite.config.ts.timestamp-*
 /datasets/evaluation/
 /datasets/training/
 /datasets/kaalastra-kaggle-sft.zip
+/kaalastra_adapter/
+/kaalastra_adapter.zip
 __pycache__/
 *.pyc
 /.kaalastra/
+
+# Local environment and editor files
+*.env
+.env
+.env.*
+!.env.example
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+
+# Python and local scan artifacts
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.kaalastra_cache/
+temp_patches/

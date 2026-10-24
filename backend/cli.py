@@ -29,28 +29,65 @@ def scan(
     commit_ref: str = typer.Option("HEAD", "--commit", "-c", help="Commit hash or ref to analyze"),
     baseline: bool = typer.Option(False, "--baseline", "-b", help="Run in diff-only baseline mode (omit graph)"),
     verify: bool = typer.Option(True, "--verify/--no-verify", help="Automatically verify patch with unit tests"),
-    as_json: bool = typer.Option(False, "--json", help="Output machine-readable JSON for IDE extensions")
+    as_json: bool = typer.Option(False, "--json", help="Output machine-readable JSON for IDE extensions"),
+    finsec: bool = typer.Option(False, "--finsec", help="Enable elsiddik/finsec_detector HuggingFace model"),
+    engine: str = typer.Option("hybrid", "--engine", "-e", help="Engine mode: hybrid | finsec | baseline")
 ):
     """Run Graph-Aware Security Review on the given commit."""
     repo_p = str(Path(repo_path).resolve())
+    is_baseline = baseline or (engine == "baseline")
+    use_finsec = finsec or (engine == "finsec")
 
     if as_json:
         # Quiet machine mode for VS Code extension
         commit = capture_commit(repo_p, commit_ref)
         subgraph = None
-        if not baseline:
+        if not is_baseline:
             graph = CodeGraph(repo_p)
             graph.build()
             subgraph = graph.get_focused_subgraph(commit.changed_files)
 
         changed_rel_paths = [f.file_path for f in commit.changed_files]
-        scanner_findings = run_all_scanners(repo_p, changed_rel_paths)
 
-        advisories = []
-        if not baseline and subgraph and subgraph.unprotected_entrypoints:
-            advisories = get_contextual_advisories(subgraph.unprotected_entrypoints, commit.changed_files)
+        if engine == "finsec":
+            from finsec_detector import scan_files_with_finsec
+            from llm_engine import KaalAstraFinding, ReviewReport
+            finsec_raw = scan_files_with_finsec(repo_p, changed_rel_paths)
+            findings = []
+            for idx, sf in enumerate(finsec_raw, 1):
+                findings.append(KaalAstraFinding(
+                    finding_id=f"FINSEC-{idx:03d}",
+                    title=f"FinSec-AI: {sf.rule_id}",
+                    severity=sf.severity,
+                    confidence="CONFIRMED",
+                    cwe=sf.rule_id.replace("FINSEC_", "").replace("_", "-"),
+                    affected_file=sf.file_path,
+                    line_range=str(sf.start_line),
+                    is_new_regression=True,
+                    failure_mechanism=sf.message,
+                    graph_evidence="Pure FinSec-AI (elsiddik/finsec_detector) code analysis without NLP prose",
+                    why_diff_only_misses_this="Detected by neural AppSec pattern matching in source AST",
+                    proposed_remediation="Apply suggested secure code fix",
+                    patch_file=sf.file_path,
+                    patch_unified_diff="",
+                    regression_test_summary="FinSec neural verification"
+                ))
+            report = ReviewReport(
+                commit_hash=commit.short_hash,
+                is_baseline_run=False,
+                findings=findings,
+                summary=f"FinSec-AI (elsiddik/finsec_detector) audited {len(changed_rel_paths)} files and detected {len(findings)} security flaws.",
+                scanner_evidence=f"{len(findings)} issues found by elsiddik/finsec_detector",
+                external_advisories=[]
+            )
+        else:
+            scanner_findings = run_all_scanners(repo_p, changed_rel_paths, enable_finsec=use_finsec)
 
-        report = run_kaalastra_review(commit, subgraph, scanner_findings, advisories, is_baseline=baseline)
+            advisories = []
+            if not is_baseline and subgraph and subgraph.unprotected_entrypoints:
+                advisories = get_contextual_advisories(subgraph.unprotected_entrypoints, commit.changed_files)
+
+            report = run_kaalastra_review(commit, subgraph, scanner_findings, advisories, is_baseline=is_baseline)
 
         verification = None
         if verify and report.findings:
@@ -76,7 +113,7 @@ def scan(
 
     # Step 2: Code Knowledge Graph
     subgraph = None
-    if not baseline:
+    if not is_baseline:
         with console.status("[bold magenta]2/5 Constructing Code Knowledge Graph & resolving callers...[/bold magenta]", spinner="dots"):
             graph = CodeGraph(repo_p)
             graph.build()
@@ -85,26 +122,59 @@ def scan(
     else:
         console.print("[dim yellow]» Baseline Mode Enabled: Skipping repository graph construction.[/dim yellow]")
 
-    # Step 3: Local Static Analysis
-    with console.status("[bold blue]3/5 Running Semgrep AST rules and secret scanners...[/bold blue]", spinner="dots"):
+    # Step 3: Local Static & FinSec Analysis
+    with console.status("[bold blue]3/5 Running static AST and FinSec AI analyzers...[/bold blue]", spinner="dots"):
         changed_rel_paths = [f.file_path for f in commit.changed_files]
-        scanner_findings = run_all_scanners(repo_p, changed_rel_paths)
+        scanner_findings = run_all_scanners(repo_p, changed_rel_paths, enable_finsec=use_finsec)
 
     # Step 4: Tavily Threat Research
     advisories = []
-    if not baseline and subgraph and subgraph.unprotected_entrypoints:
+    if not is_baseline and subgraph and subgraph.unprotected_entrypoints:
         with console.status("[bold green]4/5 Querying Tavily for authoritative vendor security advisories...[/bold green]", spinner="dots"):
             advisories = get_contextual_advisories(subgraph.unprotected_entrypoints, commit.changed_files)
 
-    # Step 5: KaalAstra LLM Reasoning
-    with console.status("[bold red]5/5 KaalAstra Neural Engine analyzing exploit paths...[/bold red]", spinner="dots"):
-        report = run_kaalastra_review(
-            commit=commit,
-            subgraph=subgraph,
-            scanner_findings=scanner_findings,
-            advisories=advisories,
-            is_baseline=baseline
-        )
+    # Step 5: KaalAstra LLM Reasoning or Pure FinSec-AI
+    if engine == "finsec":
+        with console.status("[bold magenta]5/5 Running Pure FineSec-AI (elsiddik/finsec_detector) code analysis...[/bold magenta]", spinner="dots"):
+            from finsec_detector import scan_files_with_finsec
+            from llm_engine import KaalAstraFinding, ReviewReport
+            finsec_raw = scan_files_with_finsec(repo_p, changed_rel_paths)
+            findings = []
+            for idx, sf in enumerate(finsec_raw, 1):
+                findings.append(KaalAstraFinding(
+                    finding_id=f"FINSEC-{idx:03d}",
+                    title=f"FinSec-AI: {sf.rule_id}",
+                    severity=sf.severity,
+                    confidence="CONFIRMED",
+                    cwe=sf.rule_id.replace("FINSEC_", "").replace("_", "-"),
+                    affected_file=sf.file_path,
+                    line_range=str(sf.start_line),
+                    is_new_regression=True,
+                    failure_mechanism=sf.message,
+                    graph_evidence="Pure FinSec-AI (elsiddik/finsec_detector) code analysis without NLP prose",
+                    why_diff_only_misses_this="Detected by neural AppSec pattern matching in source AST",
+                    proposed_remediation="Apply suggested secure code fix",
+                    patch_file=sf.file_path,
+                    patch_unified_diff="",
+                    regression_test_summary="FinSec neural verification"
+                ))
+            report = ReviewReport(
+                commit_hash=commit.short_hash,
+                is_baseline_run=False,
+                findings=findings,
+                summary=f"FinSec-AI (elsiddik/finsec_detector) audited {len(changed_rel_paths)} files and detected {len(findings)} security flaws.",
+                scanner_evidence=f"{len(findings)} issues found by elsiddik/finsec_detector",
+                external_advisories=[]
+            )
+    else:
+        with console.status("[bold red]5/5 KaalAstra Neural Engine analyzing exploit paths...[/bold red]", spinner="dots"):
+            report = run_kaalastra_review(
+                commit=commit,
+                subgraph=subgraph,
+                scanner_findings=scanner_findings,
+                advisories=advisories,
+                is_baseline=is_baseline
+            )
 
     # Step 6: Fix Verification
     verification = None
@@ -133,6 +203,36 @@ def explain(
         print(json.dumps(res))
     else:
         print(res["explanation"])
+
+@app.command()
+def finsec(
+    file_path: str = typer.Argument(..., help="Path to code file to audit with elsiddik/finsec_detector"),
+    local: bool = typer.Option(False, "--local", help="Run model locally with PyTorch (requires downloading 14.5 GB weights)"),
+    as_json: bool = typer.Option(True, "--json", help="Output machine-readable JSON format without NLP prose")
+):
+    """Audit source code directly using FineSec-AI (elsiddik/finsec_detector)."""
+    import json
+    from finsec_detector import FinSecDetector
+    
+    path_obj = Path(file_path).resolve()
+    if not path_obj.exists():
+        console.print(f"[bold red]File not found:[/bold red] {file_path}")
+        raise typer.Exit(1)
+        
+    code_content = path_obj.read_text(encoding="utf-8", errors="replace")
+    detector = FinSecDetector(use_local=local)
+    vulns = detector.analyze_code(code_content)
+    
+    if as_json:
+        print(json.dumps({"file": str(path_obj), "vulnerabilities": vulns}, indent=2))
+    else:
+        console.print(f"[bold cyan]Auditing {path_obj.name} with elsiddik/finsec_detector...[/bold cyan]")
+        for v in vulns:
+            console.print(f" - [{v.get('severity')}] {v.get('cwe')}: {v.get('description')}")
+            if v.get('vulnerable_line'):
+                console.print(f"   Line: [red]{v.get('vulnerable_line')}[/red]")
+            if v.get('fix_code'):
+                console.print(f"   Fix:  [green]{v.get('fix_code')}[/green]")
 
 @app.command()
 def serve(

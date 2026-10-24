@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+﻿import * as vscode from 'vscode';
 import * as path from 'path';
 import { execFile } from 'child_process';
 import { KaalAstraFixItem, ScanResult, GitCommitItem } from './types';
@@ -36,7 +36,11 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
       switch (message.command) {
         case 'webviewReady':
         case 'scanActiveCommit': {
-          await this.scanRepository(message.baseline || false, message.commitRef || 'HEAD');
+          await this.scanRepository(
+            message.baseline || false,
+            message.commitRef || 'HEAD',
+            message.engine || 'hybrid'
+          );
           break;
         }
 
@@ -98,14 +102,14 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
     }, 1200);
   }
 
-  public async scanRepository(baseline: boolean = false, commitRef: string = 'HEAD') {
+  public async scanRepository(baseline: boolean = false, commitRef: string = 'HEAD', engine: string = 'hybrid') {
     if (this._isScanning) return;
     this._isScanning = true;
 
     this._view?.webview.postMessage({
       type: 'scanningStatus',
       status: 'analyzing',
-      message: `Analyzing commit ${commitRef}...`
+      message: `Analyzing commit ${commitRef} [Mode: ${engine.toUpperCase()}]...`
     });
 
     const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -121,8 +125,7 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
         path.join(path.dirname(this._extensionUri.fsPath), 'backend', 'cli.py'),
         path.join(path.dirname(path.dirname(this._extensionUri.fsPath)), 'backend', 'cli.py'),
         path.join(targetDir, '..', 'backend', 'cli.py'),
-        path.join(targetDir, 'backend', 'cli.py'),
-        'd:\\Avdhut\\programing\\Metro Hackathon\\backend\\cli.py'
+        path.join(targetDir, 'backend', 'cli.py')
       ];
       for (const c of candidates) {
         if (fs.existsSync(c)) {
@@ -139,8 +142,7 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
         path.join(targetDir, 'demo-target'),
         path.join(projectRoot, 'demo-target'),
         path.join(path.dirname(this._extensionUri.fsPath), 'demo-target'),
-        path.join(path.dirname(path.dirname(this._extensionUri.fsPath)), 'demo-target'),
-        'd:\\Avdhut\\programing\\Metro Hackathon\\demo-target'
+        path.join(path.dirname(path.dirname(this._extensionUri.fsPath)), 'demo-target')
       ];
       for (const d of candidates) {
         if (fs.existsSync(path.join(d, '.git'))) {
@@ -154,9 +156,10 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
     if (commitRef && commitRef !== 'HEAD') {
       args.push('--commit', commitRef);
     }
-    if (baseline) {
+    if (baseline || engine === 'baseline') {
       args.push('--baseline');
     }
+    args.push('--engine', engine);
     args.push('--json');
 
     try {
@@ -281,7 +284,6 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
     if (!fs.existsSync(fullPath)) fullPath = path.join(root, 'demo-target', filePathRel);
     if (!fs.existsSync(fullPath)) fullPath = path.join(path.dirname(this._extensionUri.fsPath), 'demo-target', filePathRel);
     if (!fs.existsSync(fullPath)) fullPath = path.join(path.dirname(path.dirname(this._extensionUri.fsPath)), 'demo-target', filePathRel);
-    if (!fs.existsSync(fullPath)) fullPath = path.join('d:\\Avdhut\\programing\\Metro Hackathon\\demo-target', filePathRel);
 
     if (fs.existsSync(fullPath)) {
       try {
@@ -308,7 +310,6 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
       const candidates = [
         path.join(path.dirname(this._extensionUri.fsPath), 'backend', 'cli.py'),
         path.join(path.dirname(path.dirname(this._extensionUri.fsPath)), 'backend', 'cli.py'),
-        'd:\\Avdhut\\programing\\Metro Hackathon\\backend\\cli.py'
       ];
       for (const c of candidates) {
         if (fs.existsSync(c)) {
@@ -452,7 +453,6 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
         path.join(this._extensionUri.fsPath, '..', 'frontend', 'security-graph', 'graph.js'),
         path.join(path.dirname(this._extensionUri.fsPath), 'frontend', 'security-graph', 'graph.js'),
         path.join(path.dirname(this._extensionUri.fsPath), 'KaalAstra', 'frontend', 'security-graph', 'graph.js'),
-        'd:\\Avdhut\\programing\\Metro Hackathon\\KaalAstra\\frontend\\security-graph\\graph.js'
       ];
 
       let graphModulePath = '';
@@ -511,7 +511,6 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
     if (!fs.existsSync(graphPath)) graphPath = path.join(root, 'demo-target', '.kaalastra', 'last-run.graph');
     if (!fs.existsSync(graphPath)) graphPath = path.join(path.dirname(this._extensionUri.fsPath), 'demo-target', '.kaalastra', 'last-run.graph');
     if (!fs.existsSync(graphPath)) graphPath = path.join(path.dirname(path.dirname(this._extensionUri.fsPath)), 'demo-target', '.kaalastra', 'last-run.graph');
-    if (!fs.existsSync(graphPath)) graphPath = 'd:\\Avdhut\\programing\\Metro Hackathon\\demo-target\\.kaalastra\\last-run.graph';
 
     if (fs.existsSync(graphPath)) {
       const doc = await vscode.workspace.openTextDocument(graphPath);
@@ -536,7 +535,6 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
     if (!fs.existsSync(fullPath)) fullPath = path.join(root, 'demo-target', fix.filePath);
     if (!fs.existsSync(fullPath)) fullPath = path.join(path.dirname(this._extensionUri.fsPath), 'demo-target', fix.filePath);
     if (!fs.existsSync(fullPath)) fullPath = path.join(path.dirname(path.dirname(this._extensionUri.fsPath)), 'demo-target', fix.filePath);
-    if (!fs.existsSync(fullPath)) fullPath = path.join('d:\\Avdhut\\programing\\Metro Hackathon\\demo-target', fix.filePath);
 
     if (!fs.existsSync(fullPath)) {
       vscode.window.showErrorMessage(`Cannot locate file to patch: ${fix.filePath}`);
@@ -629,7 +627,7 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
 
       vscode.window.showInformationMessage(`Applied verified fix to ${path.basename(fullPath)}!`);
 
-      // Update lifecycle graph to reflect WORKING · VERIFIED state
+      // Update lifecycle graph to reflect WORKING Â· VERIFIED state
       const targetDir = path.dirname(path.dirname(fullPath));
       this._currentScan.lifecycleGraph = this._buildLifecycleGraph(
         targetDir,
@@ -689,7 +687,7 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
     <header class="header">
       <div class="header-top">
         <div class="title-wrap">
-          <span class="icon-pulse">🛡️</span>
+          <span class="icon-pulse">ðŸ›¡ï¸</span>
           <span class="title">KaalAstra Hub</span>
         </div>
         <div class="actions">
@@ -710,9 +708,25 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
 
       <!-- Commit Status Banner -->
       <div id="fileBanner" class="file-banner">
-        <span class="file-icon">⚡</span>
+        <span class="file-icon">âš¡</span>
         <span id="activeFileName" class="file-name">Target: HEAD (b186cfb)</span>
         <span id="issueCountBadge" class="badge badge-count">1 alert</span>
+      </div>
+
+      <!-- 3 Detection Engine Options Bar -->
+      <div class="engine-selector-container">
+        <div class="engine-selector-bar">
+          <button id="btnOptHybrid" class="engine-btn active" data-engine="hybrid" title="Option 1: Hybrid Mode (AST + Graph + FinSec AI)">
+            <span class="engine-icon">ðŸŒ</span> Hybrid (All)
+          </button>
+          <button id="btnOptFinSec" class="engine-btn" data-engine="finsec" title="Option 2: Pure FinSec-AI (elsiddik/finsec_detector only)">
+            <span class="engine-icon">ðŸ¤–</span> FinSec AI
+          </button>
+          <button id="btnOptBaseline" class="engine-btn" data-engine="baseline" title="Option 3: Diff-Only Baseline Review">
+            <span class="engine-icon">âš¡</span> Baseline
+          </button>
+        </div>
+        <div id="engineStatusBanner" class="engine-status-text">Active: <b>Hybrid Sentinel</b> (AST + Graph + FinSec AI)</div>
       </div>
 
       <!-- Filter Tabs -->
@@ -721,20 +735,20 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
         <button class="tab-btn" data-filter="CRITICAL">Critical <span id="countCritical">(0)</span></button>
         <button class="tab-btn" data-filter="HIGH">High <span id="countHigh">(0)</span></button>
         <button class="tab-btn" data-filter="topology">Topology <span id="countTopology"></span></button>
-        <button class="tab-btn" data-filter="tavily">Ask Tavily <span id="countTavily">🔍</span></button>
+        <button class="tab-btn" data-filter="tavily">Ask Tavily <span id="countTavily">ðŸ”</span></button>
       </div>
     </header>
 
     <!-- Empty States -->
     <div id="emptyStateNoEditor" class="empty-state hidden">
-      <div class="empty-icon">📁</div>
+      <div class="empty-icon">ðŸ“</div>
       <h3>No Commit Scanned</h3>
       <p>Click "Scan Commit" to trigger Graph-Aware Security Analysis.</p>
-      <button id="btnSampleNoEditor" class="btn btn-primary btn-center">⚡ Scan Commit Now</button>
+      <button id="btnSampleNoEditor" class="btn btn-primary btn-center">âš¡ Scan Commit Now</button>
     </div>
 
     <div id="emptyStateClean" class="empty-state hidden">
-      <div class="empty-icon text-success">✨</div>
+      <div class="empty-icon text-success">âœ¨</div>
       <h3>Repository Secure!</h3>
       <p>No new regressions or authorization bypasses detected.</p>
     </div>
@@ -742,7 +756,7 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
     <!-- Tavily Research Panel -->
     <div id="tavilyPanel" class="tavily-panel hidden">
       <div class="snapshot-header">
-        <span>📸 Code Snapshot (Vulnerability Marked)</span>
+        <span>ðŸ“¸ Code Snapshot (Vulnerability Marked)</span>
         <span id="snapLocation" style="color: var(--vscode-foreground); opacity: 0.7; font-size: 10px;">Select an issue to inspect</span>
       </div>
       <div id="snapCode" class="snapshot-box">// Capture a code snippet or click "Ask Tavily" on any finding card</div>
@@ -767,8 +781,8 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
     <!-- Topology & Lifecycle Graphs Panel -->
     <div id="topologyPanel" class="topology-panel hidden">
       <div class="subtabs-bar">
-        <button id="subtabLifecycle" class="subtab-btn active" data-sub="lifecycle">🔄 Before & After Flow</button>
-        <button id="subtabTopology" class="subtab-btn" data-sub="topology">🕸️ Call Topology</button>
+        <button id="subtabLifecycle" class="subtab-btn active" data-sub="lifecycle">ðŸ”„ Before & After Flow</button>
+        <button id="subtabTopology" class="subtab-btn" data-sub="topology">ðŸ•¸ï¸ Call Topology</button>
       </div>
 
       <div class="commit-toolbar">
@@ -778,10 +792,10 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
             <option value="HEAD">HEAD (b186cfb - refactor payment)</option>
           </select>
           <button id="btnAnalyzeCommit" class="btn btn-secondary icon-btn" title="Analyze Selected Git Commit">
-            ⚡
+            âš¡
           </button>
           <button id="btnOpenGraphFile" class="btn btn-secondary" title="Open .graph file in VS Code Editor" style="font-size: 10px; white-space: nowrap;">
-            📄 .graph
+            ðŸ“„ .graph
           </button>
           <button id="btnOpenGraphWorkspace" class="btn btn-secondary" title="Open interactive flowchart in full editor workspace" style="font-size: 10px; white-space: nowrap; color: #38bdf8;">
             ⤢ Workspace Tab
@@ -797,8 +811,8 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
             <span id="lifecycleBadge" class="badge" style="background: rgba(14, 165, 233, 0.15); color: #38bdf8; font-size: 9px;">COMPONENT FLOW</span>
           </div>
           <div class="vgraph-mode-toggle">
-            <button id="btnModeVisual" class="mode-btn active" data-mode="visual">🎨 Visual Graph</button>
-            <button id="btnModeText" class="mode-btn" data-mode="text">📄 .graph Text</button>
+            <button id="btnModeVisual" class="mode-btn active" data-mode="visual">ðŸŽ¨ Visual Graph</button>
+            <button id="btnModeText" class="mode-btn" data-mode="text">ðŸ“„ .graph Text</button>
           </div>
         </div>
 
@@ -834,7 +848,7 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
     <!-- Bottom Helper / Sample Button -->
     <footer class="footer">
       <button id="btnCreateSample" class="btn btn-ghost">
-        <span>🕸️ View Call-Graph Topology</span>
+        <span>ðŸ•¸ï¸ View Call-Graph Topology</span>
       </button>
     </footer>
   </div>

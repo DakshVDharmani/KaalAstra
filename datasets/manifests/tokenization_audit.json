@@ -1,0 +1,68 @@
+{
+  "tokenizer": "saved pinned Nemotron tokenizer",
+  "max_length": 768,
+  "answer_token_ids": [
+    426,
+    362
+  ],
+  "splits": {
+    "train": {
+      "eligible": 2722,
+      "classes": {
+        "1": 1361,
+        "0": 1361
+      },
+      "languages": {
+        "c_or_cpp": 2133,
+        "php": 246,
+        "c": 162,
+        "javascript": 94,
+        "cpp": 40,
+        "python": 37,
+        "typescript": 10
+      },
+      "excluded_for_length": {
+        "1": 638,
+        "0": 590
+      }
+    },
+    "validation": {
+      "eligible": 331,
+      "classes": {
+        "1": 237,
+        "0": 94
+      },
+      "languages": {
+        "c_or_cpp": 192,
+        "php": 63,
+        "c": 60,
+        "javascript": 9,
+        "python": 2,
+        "cpp": 5
+      },
+      "excluded_for_length": {
+        "1": 89,
+        "0": 84
+      }
+    },
+    "test": {
+      "eligible": 554,
+      "classes": {
+        "1": 341,
+        "0": 213
+      },
+      "languages": {
+        "c_or_cpp": 434,
+        "php": 60,
+        "javascript": 16,
+        "c": 32,
+        "python": 6,
+        "cpp": 6
+      },
+      "excluded_for_length": {
+        "1": 210,
+        "0": 207
+      }
+    }
+  }
+}

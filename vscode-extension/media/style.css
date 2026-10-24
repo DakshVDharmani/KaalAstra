@@ -122,6 +122,61 @@ body {
   font-size: 11px;
 }
 
+/* Engine Options Selector */
+.engine-selector-container {
+  background-color: var(--vscode-editor-inactiveSelectionBackground, rgba(128, 128, 128, 0.08));
+  border: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.2));
+  border-radius: 5px;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+}
+
+.engine-selector-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.engine-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 3px;
+  border: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.2));
+  background: var(--vscode-button-secondaryBackground, rgba(128, 128, 128, 0.15));
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.engine-btn:hover {
+  background: var(--vscode-button-secondaryHoverBackground, rgba(128, 128, 128, 0.25));
+  border-color: var(--vscode-focusBorder, #007acc);
+}
+
+.engine-btn.active {
+  background: var(--vscode-button-background, #007acc);
+  color: var(--vscode-button-foreground, #ffffff);
+  border-color: transparent;
+  box-shadow: 0 1px 4px rgba(0, 122, 204, 0.3);
+}
+
+.engine-status-text {
+  font-size: 9.5px;
+  opacity: 0.8;
+  color: var(--vscode-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-top: 2px;
+}
+
 .file-name {
   flex: 1;
   overflow: hidden;

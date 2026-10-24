@@ -6,6 +6,7 @@ from fastapi import FastAPI, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
 from pydantic import BaseModel
+from config import KAALASTRA_PORT
 
 from git_capture import capture_commit
 from graph_engine import CodeGraph
@@ -189,4 +190,10 @@ async def scan_stream(repo_path: str, commit_ref: str = "HEAD", baseline: bool =
         }
 
     return EventSourceResponse(event_generator())
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="127.0.0.1", port=KAALASTRA_PORT)
 

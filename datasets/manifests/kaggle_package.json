@@ -1,14 +1,19 @@
 {
   "path": "datasets\\kaalastra-kaggle-sft.zip",
-  "bytes": 5166222,
-  "sha256": "1d4258760746ee3df3bbae220d67ce9df4f3977d59200fdce47aed8eda5eea00",
+  "bytes": 6213974,
+  "sha256": "77892e6b8ceaae1e85edc4104cc1e045f0201b3ee996692fa57feeba86b2dce5",
   "contents": {
-    "train.jsonl": "eed3139c41f626cda9662056a6cbc60cd8318000b4f0a190aad3097dfc3815a0",
-    "validation.jsonl": "8b50f394dd8a082050ca7a18f0cdfe53fc355639d1d1585dc907a3712e5c808b",
-    "test.jsonl": "bc408326cf99f280f6792af1d2feb39f2c2b4d56721a5ffe2cd7ecff1d8f440f",
-    "manifest.json": "1df51c1127afaa5db5c91a0a4b0223185158adc5c9e3dff487ae351de64a3461",
-    "train_kaggle.py": "5564910ed022c9a1a30223aea145655f1af5af5976563273dfa8ea79c0fc09fa",
-    "evaluate_kaggle.py": "dd460473711a4b8fc5a9ac485ea7368ecf81b23794bdd3d525bd64a8153e2eed",
-    "review_kaggle.py": "ae34064d9f299bea90e81dcf465afe925d861fe179169dbee0651a114c2aadac"
+    "train.jsonl": "1f3ae05f5842d6857e727c0e23f91d6dc1ae749c9d4cdcf1930104a79811a85b",
+    "validation.jsonl": "8cff6736ab5f65417f0c308c65e8b8e456a6e396cdad27a8cd3fd895256ed1cf",
+    "test.jsonl": "ea676e1847c619b8378dc554292e1640f065873f00decbbe56164dd3be1d559b",
+    "manifest.json": "2675df3126bfd25288ca282c1378e20e51cd02ec263428429a670a3a40d3ad31",
+    "train_kaggle.py": "f46d2cd2ce6cb2fb40ce32200ede7dfb6ce0fd209bed3b517d129fb3a0e09f5e",
+    "evaluate_kaggle.py": "8d047ff277af7b6c775a64bfbbc9ba3fea7edb1692cf31404f0a0d1f48c5fbf3",
+    "review_kaggle.py": "0d588fbb3a2e80a15aa24751a10e9ddb78c41cba88bcc865b3dab4ed46c3e257",
+    "risk_core.py": "4a8ba63778f93d01b5f02639ba139e5dc703cc4863cf98eccbf270013201d5c2",
+    "risk_model.py": "1a5d9f33cc3086678e74ed833a469a63b7b21b7c98106572fce88fdf8b78e576",
+    "audit_training_data.py": "f4249dac059ee77b27aec84b39fd72354a0d80e2148d1857be0d841c932fc449",
+    "export_run.py": "e6bac89569dcec2b64068b5a98101db9e2f6ab0200f935d888780c98dbc7cd08",
+    "run_kaggle.py": "10e4b3053027eeca7d7b2023dbbdd787480913269c6f461332516fb54da86b57"
   }
 }
