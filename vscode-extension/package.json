@@ -1,0 +1,76 @@
+{
+  "name": "kaalastra-sentinel",
+  "displayName": "KaalAstra — Graph-Aware Security Sentinel",
+  "description": "Commit-triggered, graph-aware code security analysis with automated patch verification",
+  "version": "1.0.0",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters",
+    "Programming Languages",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onView:kaalastra.sidebarView"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "kaalastra-panel",
+          "title": "KaalAstra",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "kaalastra-panel": [
+        {
+          "type": "webview",
+          "id": "kaalastra.sidebarView",
+          "name": "Security Sentinel"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "kaalastra.scanCurrentCommit",
+        "title": "KaalAstra: Scan Current Commit",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "kaalastra.applyAllFixes",
+        "title": "KaalAstra: Apply Verified Fixes",
+        "icon": "$(check-all)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "kaalastra.scanCurrentCommit",
+          "when": "view == kaalastra.sidebarView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "kaalastra.applyAllFixes",
+          "when": "view == kaalastra.sidebarView",
+          "group": "navigation@2"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
+    "watch": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --watch"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.20.1",
+    "typescript": "^5.3.3"
+  }
+}
