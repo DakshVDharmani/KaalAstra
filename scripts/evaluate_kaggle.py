@@ -1,104 +1,118 @@
-"""Compare a base Nemotron and its KAALASTRA adapter on the same held-out rows."""
+"""Comparable A/B scoring, validation-only thresholds, streamed resumable predictions."""
 import argparse
+import collections
 import contextlib
+import hashlib
 import json
+import os
 import pathlib
 import random
+import time
+from risk_core import (SCHEMA, atomic_json, choose_threshold, cluster_intervals, digest,
+    encode_rows, metrics, read_rows, token_ids)
+from risk_model import load_base, score
+from export_run import export_run
 
-def parse_json(text):
-    decoder = json.JSONDecoder()
-    for index, char in enumerate(text):
-        if char == "{":
-            try:
-                value, _ = decoder.raw_decode(text[index:])
-                if isinstance(value, dict):
-                    return value
-            except json.JSONDecodeError:
-                pass
-    return None
-
-def metrics(rows):
-    tp = fp = tn = fn = malformed = cwe_right = cwe_total = 0
-    for row in rows:
-        actual = row["actual"]
-        parsed = row["parsed"]
-        if parsed is None or parsed.get("status") not in {"vulnerable", "no_confirmed_finding"}:
-            malformed += 1
-            predicted = 1  # Count unparseable responses as findings for conservative FPR.
-        else:
-            predicted = int(parsed["status"] == "vulnerable")
-        tp += actual == 1 and predicted == 1
-        fp += actual == 0 and predicted == 1
-        tn += actual == 0 and predicted == 0
-        fn += actual == 1 and predicted == 0
-        if actual == 1 and predicted == 1:
-            cwe_total += 1
-            findings = parsed.get("findings", []) if isinstance(parsed, dict) else []
-            found = findings[0].get("cwe") if findings and isinstance(findings[0], dict) else None
-            cwe_right += found == row["expected_cwe"]
-    return {"n": len(rows), "tp": tp, "fp": fp, "tn": tn, "fn": fn,
-        "precision": tp / (tp + fp) if tp + fp else None,
-        "recall": tp / (tp + fn) if tp + fn else None,
-        "f1": 2 * tp / (2 * tp + fp + fn) if 2 * tp + fp + fn else None,
-        "false_positive_rate": fp / (fp + tn) if fp + tn else None,
-        "cwe_accuracy_on_true_positives": cwe_right / cwe_total if cwe_total else None,
-        "unparseable": malformed}
+def cached_predictions(path, identity):
+    cache = {}
+    if not path.exists(): return cache
+    lines = path.read_text(encoding="utf-8").splitlines()
+    for index, line in enumerate(lines):
+        try: row = json.loads(line)
+        except json.JSONDecodeError:
+            if index != len(lines) - 1: raise
+            break  # Interrupted final write; recover the complete lines.
+        if row["cache_identity"] != identity: raise ValueError("Prediction cache belongs to a different model/data configuration")
+        cache[row["id"]] = row
+    path.write_text("".join(json.dumps(row) + "\n" for row in cache.values()), encoding="utf-8")
+    return cache
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-dir", type=pathlib.Path, required=True)
     parser.add_argument("--run-dir", type=pathlib.Path, required=True)
-    parser.add_argument("--limit-per-class", type=int, default=30)
+    parser.add_argument("--limit-per-class", type=int, default=100)
+    parser.add_argument("--deadline-unix", type=float, default=0)
     args = parser.parse_args()
-    import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+    if args.limit_per_class < 0: raise ValueError("limit-per-class must be nonnegative")
+    manifest = json.loads((args.run_dir / "run_manifest.json").read_text())
+    if manifest.get("schema") != SCHEMA:
+        raise RuntimeError("This evaluator requires a v2 classifier adapter; the old JSON pilot is a different objective")
+    from transformers import AutoTokenizer
     from peft import PeftModel
-    manifest = json.loads((args.run_dir / "run_manifest.json").read_text(encoding="utf-8"))
-    rows = [json.loads(line) for line in (args.data_dir / "test.jsonl").open(encoding="utf-8")]
-    rng = random.Random(manifest["seed"])
-    positive = [r for r in rows if r["metadata"]["label"] == 1]
-    negative = [r for r in rows if r["metadata"]["label"] == 0]
-    rng.shuffle(positive)
-    rng.shuffle(negative)
-    sample = positive[:args.limit_per_class] + negative[:args.limit_per_class]
-    rng.shuffle(sample)
-    if not sample:
-        raise RuntimeError("No held-out samples")
-    model_id, revision = manifest["model"], manifest["model_revision"]
-    trust = "NVIDIA-Nemotron-Nano-9B-v2" in model_id
-    dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
-    quant = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
-        bnb_4bit_use_double_quant=True, bnb_4bit_compute_dtype=dtype)
-    tokenizer = AutoTokenizer.from_pretrained(model_id, revision=revision, trust_remote_code=trust)
-    if tokenizer.pad_token_id is None:
-        tokenizer.pad_token = tokenizer.eos_token
-    base = AutoModelForCausalLM.from_pretrained(model_id, revision=revision,
-        quantization_config=quant, device_map={"": 0}, torch_dtype=dtype, trust_remote_code=trust)
+    tokenizer = AutoTokenizer.from_pretrained(args.run_dir / "adapter")
+    answer_ids = token_ids(tokenizer)
+    splits, excluded = {}, {}
+    for split in ("validation", "test"):
+        data_path = args.data_dir / (split + ".jsonl")
+        if digest(data_path) != manifest["data_hashes"][split]: raise ValueError("Evaluation data differs from training manifest")
+        splits[split], excluded[split] = encode_rows(read_rows(data_path), tokenizer, manifest["max_length"])
+        if {row["labels"] for row in splits[split]} != {0, 1}: raise ValueError("Both evaluation classes are required")
+        if split == "test" and args.limit_per_class:
+            rng = random.Random(manifest["seed"])
+            rng.shuffle(splits[split])
+            splits[split] = [r for label in (0, 1) for r in [x for x in splits[split] if x["labels"] == label][:args.limit_per_class]]
+    identity = hashlib.sha256(json.dumps({"schema": SCHEMA, "manifest": manifest,
+        "adapter_sha256": digest(args.run_dir / "adapter/adapter_model.safetensors")}, sort_keys=True).encode()).hexdigest()
+    base = load_base(manifest["model"], manifest["model_revision"])
     model = PeftModel.from_pretrained(base, args.run_dir / "adapter")
     model.eval()
-    results = {}
-    for mode in ("base", "adapter"):
-        predictions = []
-        adapter_context = model.disable_adapter() if mode == "base" else contextlib.nullcontext()
-        with adapter_context, torch.inference_mode():
-            for number, row in enumerate(sample, 1):
-                inputs = tokenizer.apply_chat_template(row["prompt"], tokenize=True,
-                    add_generation_prompt=True, return_tensors="pt").to("cuda:0")
-                output = model.generate(input_ids=inputs, max_new_tokens=192, do_sample=False,
-                    pad_token_id=tokenizer.pad_token_id)
-                text = tokenizer.decode(output[0][inputs.shape[-1]:], skip_special_tokens=True)
-                predictions.append({"actual": row["metadata"]["label"],
-                    "expected_cwe": row["metadata"].get("cwe"), "parsed": parse_json(text),
-                    "raw_output": text, "source": row["metadata"]["source"]})
-                if number % 10 == 0:
-                    print(mode, number, "/", len(sample), flush=True)
-        results[mode] = metrics(predictions)
-        with (args.run_dir / ("predictions_" + mode + ".jsonl")).open("w", encoding="utf-8") as out:
-            for row in predictions:
-                out.write(json.dumps(row, ensure_ascii=False) + "\n")
-    results["note"] = "Exact-line and patch correctness unavailable: held-out records lack independently verified labels. No commercial-product comparison was run."
-    (args.run_dir / "heldout_results.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
-    print(json.dumps(results, indent=2))
+    scored = {}
+    for split in ("validation", "test"):
+        scored[split] = {}
+        for mode in ("base", "adapter"):
+            path = args.run_dir / f"predictions_{split}_{mode}.jsonl"
+            cache = cached_predictions(path, identity)
+            adapter_context = model.disable_adapter() if mode == "base" else contextlib.nullcontext()
+            with adapter_context, path.open("a", encoding="utf-8") as stream:
+                for number, row in enumerate(splits[split], 1):
+                    key = row["metadata"]["code_sha256"]
+                    if key not in cache:
+                        if args.deadline_unix and time.time() > args.deadline_unix - 30:
+                            raise TimeoutError("Evaluation deadline reached; completed predictions are saved and resumable")
+                        risk = score(model, row["input_ids"], answer_ids)
+                        record = {"id": key, "actual": row["labels"], "score": risk,
+                            "project": row["metadata"]["project"], "language": row["metadata"]["language"],
+                            "source": row["metadata"]["source"], "cwe": row["metadata"].get("cwe"),
+                            "cache_identity": identity}
+                        if not 0 <= risk <= 1: raise RuntimeError("Nonfinite risk score")
+                        stream.write(json.dumps(record) + "\n")
+                        stream.flush()
+                        os.fsync(stream.fileno())
+                        cache[key] = record
+                    if number % 25 == 0: print(split, mode, number, "/", len(splits[split]), flush=True)
+            scored[split][mode] = [cache[row["metadata"]["code_sha256"]] for row in splits[split]]
+            export_run(args.run_dir)
 
-if __name__ == "__main__":
-    main()
+    report = {"schema": SCHEMA, "comparison": "Same quantized Nemotron base versus v2 adapter; constrained A/B scoring",
+        "max_input_tokens": manifest["max_length"], "excluded_for_length": excluded,
+        "test_caveat": "Exploratory: part of this held-out dataset was inspected during v1 development; not an independent SOTA benchmark",
+        "score_caveat": "Two-answer softmax is a risk score, not a calibrated probability of exploitability",
+        "validation": {}, "test": {}, "by_language": {}}
+    thresholds = {}
+    for mode in ("base", "adapter"):
+        validation = scored["validation"][mode]
+        selected = choose_threshold([r["actual"] for r in validation], [r["score"] for r in validation], max_fpr=.2)
+        thresholds[mode] = selected["threshold"]
+        report["validation"][mode] = selected
+        rows = scored["test"][mode]
+        report["test"][mode] = metrics([r["actual"] for r in rows], [r["score"] for r in rows], thresholds[mode])
+        report["by_language"][mode] = {}
+        for language in sorted({r["language"] for r in rows}):
+            subset = [r for r in rows if r["language"] == language]
+            report["by_language"][mode][language] = metrics([r["actual"] for r in subset], [r["score"] for r in subset], thresholds[mode])
+    paired = [{"actual": a["actual"], "project": a["project"], "base": b["score"], "adapter": a["score"]}
+        for b, a in zip(scored["test"]["base"], scored["test"]["adapter"])]
+    report["paired_project_bootstrap_delta_95pct"] = cluster_intervals(paired, thresholds)
+    report["improved_metrics"] = [name for name in ("f1", "balanced_accuracy")
+        if report["test"]["adapter"][name] > report["test"]["base"][name]]
+    current = report["test"]["adapter"]
+    report["candidate_gate_passed"] = (current["recall"] >= .6 and current["false_positive_rate"] <= .2
+        and len(report["improved_metrics"]) == 2)
+    report["gate_note"] = "A local candidate gate only; no claim of superiority to other security products or production readiness"
+    atomic_json(args.run_dir / "thresholds.json", {"schema": SCHEMA, "selection_split": "validation", "thresholds": thresholds})
+    atomic_json(args.run_dir / "heldout_results.json", report)
+    print(json.dumps(report, indent=2), flush=True)
+    print("Export:", export_run(args.run_dir), flush=True)
+
+if __name__ == "__main__": main()

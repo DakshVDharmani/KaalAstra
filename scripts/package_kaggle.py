@@ -3,6 +3,7 @@ import hashlib
 import json
 import pathlib
 import zipfile
+from audit_training_data import audit
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 TRAIN = ROOT / "datasets/training"
@@ -16,8 +17,11 @@ FILES = {
     "evaluate_kaggle.py": ROOT / "scripts/evaluate_kaggle.py",
     "review_kaggle.py": ROOT / "scripts/review_kaggle.py",
 }
+for script in ('risk_core', 'risk_model', 'audit_training_data', 'export_run', 'run_kaggle'):
+    FILES[script + '.py'] = ROOT / 'scripts' / (script + '.py')
 
 def main():
+    audit(TRAIN)
     for name, path in FILES.items():
         if not path.is_file():
             raise FileNotFoundError(f"Missing {name}: {path}")

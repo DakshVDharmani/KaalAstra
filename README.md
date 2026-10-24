@@ -1,6 +1,6 @@
-# ⚔️ KAALASTRA
+# âš”ï¸ KAALASTRA
 
-### कालास्त्र — The Weapon Against the Dark Age of Code
+### à¤•à¤¾à¤²à¤¾à¤¸à¥à¤¤à¥à¤° â€” The Weapon Against the Dark Age of Code
 
 **October went dark. KAALASTRA awakened.**
 
@@ -10,7 +10,7 @@ The standalone [security run graph](FRONTEND/security-graph/README.md) generates
 
 ---
 
-## 🌑 The Dark Age of Code
+## ðŸŒ‘ The Dark Age of Code
 
 Modern software development runs on trust.
 
@@ -26,12 +26,12 @@ Traditional security workflows often discover vulnerabilities too late, after co
 
 That is the vision behind KAALASTRA.
 
-## 🔱 Why KAALASTRA?
+## ðŸ”± Why KAALASTRA?
 
 Inspired by Indian mythology and Sanskrit, KAALASTRA combines two powerful ideas:
 
-- **Kaal (काल):** Time, mortality, and the inevitable passage of eras.
-- **Astra (अस्त्र):** A weapon, traditionally associated with extraordinary power.
+- **Kaal (à¤•à¤¾à¤²):** Time, mortality, and the inevitable passage of eras.
+- **Astra (à¤…à¤¸à¥à¤¤à¥à¤°):** A weapon, traditionally associated with extraordinary power.
 
 Together, KAALASTRA represents a weapon forged to confront the darkest threats of modern software development.
 
@@ -39,7 +39,7 @@ Just as ancient warriors relied on powerful astras to defend against formidable 
 
 **Our philosophy: Detect early. Understand deeply. Defend continuously.**
 
-## 🛡️ What Is KAALASTRA?
+## ðŸ›¡ï¸ What Is KAALASTRA?
 
 KAALASTRA is a proposed intelligent cybersecurity companion integrated directly into Visual Studio Code.
 
@@ -47,7 +47,7 @@ Rather than functioning solely as a conventional vulnerability scanner, KAALASTR
 
 Its goal is to help developers understand not only **what is vulnerable**, but also **why it matters, how it could be exploited, and how to fix it safely**.
 
-## ⚡ Planned Capabilities
+## âš¡ Planned Capabilities
 
 ### 1. Intelligent Vulnerability Detection
 
@@ -108,7 +108,7 @@ KAALASTRA is designed around a simple principle:
 
 The envisioned experience prioritizes meaningful findings, contextual explanations, manageable alerts, and minimal disruption to existing development workflows.
 
-## 🧠 Proposed Architecture
+## ðŸ§  Proposed Architecture
 
 ```text
                  KAALASTRA
@@ -136,7 +136,7 @@ The envisioned experience prioritizes meaningful findings, contextual explanatio
 
 The architecture is conceptual and may evolve during implementation.
 
-## 🛠️ Proposed Technology Stack
+## ðŸ› ï¸ Proposed Technology Stack
 
 | Component | Technology |
 |---|---|
@@ -150,7 +150,7 @@ The architecture is conceptual and may evolve during implementation.
 | Interface | VS Code diagnostics, commands, and webviews |
 | Testing | Automated tests and security-focused test cases |
 
-## 🚀 Getting Started
+## ðŸš€ Getting Started
 
 KAALASTRA is currently in its early development stage.
 
@@ -172,39 +172,39 @@ Run the build command defined in `package.json`, then launch the extension devel
 
 Installation instructions will be updated as the implementation progresses.
 
-## 🗺️ Development Roadmap
+## ðŸ—ºï¸ Development Roadmap
 
-### Phase 1 — Foundation
+### Phase 1 â€” Foundation
 - [ ] Initialize VS Code extension architecture
 - [ ] Implement workspace and file discovery
 - [ ] Build the security diagnostics interface
 - [ ] Establish a modular scanning pipeline
 
-### Phase 2 — Core Security
+### Phase 2 â€” Core Security
 - [ ] Implement initial static analysis rules
 - [ ] Add dependency vulnerability detection
 - [ ] Introduce secret detection
 - [ ] Integrate vulnerability advisory sources
 
-### Phase 3 — Intelligent Analysis
+### Phase 3 â€” Intelligent Analysis
 - [ ] Introduce contextual AI explanations
 - [ ] Implement security finding correlation
 - [ ] Develop attack-path analysis
 - [ ] Add risk prioritization
 
-### Phase 4 — Remediation
+### Phase 4 â€” Remediation
 - [ ] Generate suggested security fixes
 - [ ] Validate fixes against tests and rules
 - [ ] Introduce developer-controlled remediation
 - [ ] Improve false-positive handling
 
-### Phase 5 — Release
+### Phase 5 â€” Release
 - [ ] Conduct security and performance testing
 - [ ] Prepare documentation
 - [ ] Package the VS Code extension
 - [ ] Publish the initial release
 
-## 🔐 Security and Privacy Principles
+## ðŸ” Security and Privacy Principles
 
 As a security-focused developer tool, KAALASTRA aims to follow security-first engineering practices.
 
@@ -217,7 +217,7 @@ As a security-focused developer tool, KAALASTRA aims to follow security-first en
 
 These are project design goals and will require implementation and testing before release.
 
-## 🤝 Contributing
+## ðŸ¤ Contributing
 
 Contributions, suggestions, and security research are welcome as the project develops.
 
@@ -225,7 +225,7 @@ Potential contribution areas include static analysis, package ecosystem support,
 
 Contribution guidelines will be published as the repository matures.
 
-## ⚠️ Disclaimer
+## âš ï¸ Disclaimer
 
 KAALASTRA is intended to assist developers in identifying and understanding software security risks.
 
@@ -233,13 +233,13 @@ No automated security tool can guarantee that an application is free from vulner
 
 KAALASTRA is not a substitute for comprehensive security testing, code review, or professional security assessments.
 
-## 📜 License
+## ðŸ“œ License
 
 License to be determined.
 
 ---
 
-### ⚔️ KAALASTRA
+### âš”ï¸ KAALASTRA
 
 **Forged in Bharat. Built for the world.**
 
@@ -260,6 +260,10 @@ KAALASTRA's dataset work is built on published vulnerability research and real s
 
 The [dataset manifest](datasets/manifests/downloads.json) records exact files, sizes, hashes, and source links. The [dataset preparation notes](datasets/README.md) explain filtering and usage limits. Dataset acquisition is a foundation for model development; performance claims will be made only after reproducible held-out evaluation.
 
-### Ready-to-run Kaggle pilot
+### Bounded Kaggle training and comparison
 
-The prepared fine-tuning package has **5,997 training**, **504 validation**, and **985 held-out test** security-review examples, with projects, exact code, and vulnerability IDs isolated across splits. A [Kaggle notebook](notebooks/kaalastra_nemotron_kaggle.ipynb) and [step-by-step training guide](docs/KAGGLE_TRAINING.md) run a 4-bit LoRA pilot for NVIDIA Nemotron, record the model revision and hashes, and support a base-versus-adapter held-out comparison. No fine-tuning or model benchmark has run yet.
+The v2 package contains **3,998 training**, **504 validation**, and **971 test** function-level examples before token filtering. Training is class balanced and prioritizes paired fixed-code negatives. Projects, whitespace-normalized code hashes and vulnerability IDs are isolated across splits; near-clone leakage and upstream label errors remain limitations.
+
+The [notebook](notebooks/kaalastra_nemotron_kaggle.ipynb) runs one bounded QLoRA classification job, validation threshold selection, paired base-versus-adapter evaluation and persistent export. Follow the [Kaggle guide](docs/KAGGLE_TRAINING.md) with the matching dataset ZIP. The configured total budget is 3h30 including setup, with a two-hour training cap; actual epoch coverage depends on GPU throughput and downloads.
+
+The previous pilot missed 29 of 30 vulnerable examples and did not establish useful performance. V2 corrects training and evaluation defects documented in the [training audit](docs/TRAINING_AUDIT.md); v2 accuracy has not yet been measured. It targets improvement in F1 and balanced accuracy against the same base model, with explicit recall and false-positive constraints. No SOTA, commercial-product superiority, whole-project detection or patch-correctness claim is established.

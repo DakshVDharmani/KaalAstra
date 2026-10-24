@@ -1,192 +1,111 @@
-"""Generate the ready-to-import Kaggle notebook from the checked package hash."""
+﻿"""Generate the v2 notebook from the exact checked dataset package."""
 import json
 import pathlib
 import textwrap
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-PACKAGE = json.loads((ROOT / "datasets/manifests/kaggle_package.json").read_text(encoding="utf-8"))
-EXPECTED_SHA256 = PACKAGE["sha256"]
-EXPECTED_FILES = PACKAGE["contents"]
+PACKAGE = json.loads((ROOT / 'datasets/manifests/kaggle_package.json').read_text())
+def cell(kind, text):
+    value = {'cell_type': kind, 'metadata': {}, 'source': textwrap.dedent(text).strip().splitlines(True)}
+    if kind == 'code': value.update(execution_count=None, outputs=[])
+    return value
 
-def markdown(source):
-    return {"cell_type": "markdown", "metadata": {}, "source": textwrap.dedent(source).strip().splitlines(True)}
+cells = [cell('markdown', '''
+# KAALASTRA v2 — one bounded Nemotron risk-classification run
+Attach the matching private dataset ZIP, enable a GPU and Internet, then use **Save Version → Save & Run All**.
+This is a new binary classification objective. Do not mix old pilot adapters, scripts or cells with it.
+Training is capped at two hours including model setup. The total 3h30 budget includes installation, downloads and evaluation.
+A completed pipeline is not a guarantee of useful accuracy; inspect `candidate_gate_passed` and the actual metrics.
+'''), cell('code', '''
+import os, sys, time, pathlib, subprocess, json, hashlib, zipfile
+SESSION_STARTED = time.time()
+DEADLINE = SESSION_STARTED + 3.5 * 3600
+single_gpu_env = {**os.environ, 'CUDA_VISIBLE_DEVICES': '0', 'TOKENIZERS_PARALLELISM': 'false'}
+run_dir = pathlib.Path('/kaggle/working/kaalastra_run_v2')
+print('Deadline (UTC):', time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(DEADLINE)))
+'''), cell('code', '''
+expected_zip = EXPECTED_ZIP
+expected_files = EXPECTED_FILES
+root = pathlib.Path('/kaggle/input')
+matches = list(root.rglob('kaalastra-kaggle-sft.zip'))
+if len(matches) == 1:
+    package = matches[0]
+    assert hashlib.sha256(package.read_bytes()).hexdigest() == expected_zip, 'Wrong dataset version: upload the matching ZIP.'
+    data_dir = pathlib.Path('/kaggle/working/kaalastra_sft_v2')
+    data_dir.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(package) as archive:
+        assert set(archive.namelist()) == set(expected_files), 'Unexpected ZIP entries'
+        for entry in archive.namelist():
+            assert pathlib.PurePosixPath(entry).name == entry and '\\\\' not in entry
+        archive.extractall(data_dir)
+else:
+    assert not matches, 'Attach only one version of the dataset.'
+    candidates = [p.parent for p in root.rglob('run_kaggle.py') if all((p.parent / name).is_file() for name in expected_files)]
+    assert len(candidates) == 1, 'Attach exactly one matching v2 dataset (ZIP or unpacked files).'
+    data_dir = candidates[0]
+for name, expected in expected_files.items():
+    actual = hashlib.sha256((data_dir / name).read_bytes()).hexdigest()
+    assert actual == expected, f'{name} mismatch. Replace dataset and notebook together; do not bypass this check.'
+print('Verified:', data_dir)
+print(json.dumps(json.loads((data_dir / 'manifest.json').read_text())['splits'], indent=2))
+'''.replace('EXPECTED_ZIP', repr(PACKAGE['sha256'])).replace('EXPECTED_FILES', repr(PACKAGE['contents']))), cell('markdown', '''
+The next cell uses a separate Python environment for training, inheriting Kaggle's CUDA PyTorch.
+It leaves the notebook kernel's package installation unchanged. No Gradio or Diffusers imports are needed.
+If the model requires authentication, add a Kaggle secret named `HF_TOKEN` before starting.
+'''), cell('code', '''
+venv_dir = pathlib.Path('/kaggle/working/kaalastra_env')
+subprocess.run([sys.executable, '-m', 'venv', '--system-site-packages', '--without-pip', str(venv_dir)], check=True, timeout=120)
+python = str(venv_dir / 'bin/python')
+subprocess.run([sys.executable, '-m', 'pip', '--python', python, 'install', '--disable-pip-version-check',
+    'transformers==4.57.6', 'peft==0.21.2', 'accelerate==1.11.0',
+    'bitsandbytes==0.50.2', 'huggingface-hub==0.36.2'], check=True, timeout=900)
+try:
+    from kaggle_secrets import UserSecretsClient
+    token = UserSecretsClient().get_secret('HF_TOKEN')
+    if token: single_gpu_env['HF_TOKEN'] = token
+except Exception:
+    print('No HF_TOKEN secret loaded; using public model access.')
+check = "import sys; sys.path.insert(0, sys.argv[1]); import torch, transformers, peft, accelerate, bitsandbytes; from risk_model import gpu_check; print('GPU:', gpu_check().name); print('Training imports OK:', torch.__version__, transformers.__version__, peft.__version__, accelerate.__version__, bitsandbytes.__version__)"
+subprocess.run([python, '-c', check, str(data_dir)], check=True, env=single_gpu_env, timeout=120)
+'''), cell('markdown', '''
+## Train, compare, export
+One command runs the corpus audit, longest-example forward/backward preflight, training, validation threshold selection, paired test and export.
+There is no separate pilot. Checkpoints are saved every 40 optimizer steps; predictions are saved after each example.
+If a stage fails, the run reports **incomplete** and exports whatever was saved. A timeout is not a successful evaluation.
+'''), cell('code', '''
+command = [python, '-u', str(data_dir / 'run_kaggle.py'), '--data-dir', str(data_dir),
+    '--run-dir', str(run_dir), '--deadline-unix', str(DEADLINE)]
+print('Running:', ' '.join(command))
+result = subprocess.run(command, env=single_gpu_env)
+print('Pipeline exit code:', result.returncode)
+if result.returncode:
+    print('INCOMPLETE: inspect pipeline_status.json and logs. Saved adapters and predictions are preserved.')
+'''), cell('code', '''
+from IPython.display import display, FileLink
+for name in ('pipeline_status.json', 'heldout_results.json'):
+    path = run_dir / name
+    if path.exists(): print(name, path.read_text())
+archive = pathlib.Path('/kaggle/working/kaalastra_adapter.zip')
+if archive.exists():
+    display(FileLink(str(archive)))
+    print('Download kaalastra_adapter.zip from the saved notebook version Output tab.')
+else:
+    print('No export exists: inspect the setup cell errors.')
+print('Do not reset the session until artifacts are saved or downloaded.')
+'''), cell('markdown', '''
+## Read the result before deployment
+`pipeline_status.status=complete` means the pipeline completed. `heldout_results.candidate_gate_passed` separately checks recall >= 0.60,
+false-positive rate <= 0.20 and improvement in both F1 and balanced accuracy against the same base model.
+This is an exploratory local comparison, not a SOTA or production certification. Prior v1 development inspected part of the test data.
+The adapter classifies complete functions up to 768 prompt tokens; it does not provide verified CWE, line numbers, fixes or repository coverage.
 
-def code(source):
-    return {"cell_type": "code", "execution_count": None, "metadata": {}, "outputs": [],
-        "source": textwrap.dedent(source).strip().splitlines(True)}
-
-cells = [
-    markdown("""
-    # KAALASTRA: Nemotron security-review QLoRA on Kaggle
-
-    1. Attach your **private** Kaggle Dataset containing `kaalastra-kaggle-sft.zip`.
-    2. In Notebook Settings, set **Accelerator: GPU** and **Internet: On**.
-    3. Run cells top to bottom. The first training run is a 60-step pilot.
-    4. Keep this notebook private until you have reviewed dataset rights and results.
-
-    This notebook trains only on the local train split. Validation is used for training feedback; test is reserved for the optional final comparison. Patchwork generated analyses and SVEN fixtures are excluded.
-    """),
-    code("""
-    import torch, shutil
-    print('PyTorch:', torch.__version__, 'CUDA:', torch.version.cuda)
-    assert torch.cuda.is_available(), 'Enable GPU in Notebook Settings, then restart the session.'
-    for i in range(torch.cuda.device_count()):
-        p = torch.cuda.get_device_properties(i)
-        print(i, p.name, round(p.total_memory / 1024**3, 1), 'GiB')
-    print('Free disk:', round(shutil.disk_usage('/kaggle/working').free / 1e9, 1), 'GB')
-    """),
-    code("""
-    import subprocess, sys
-    subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', '-U',
-                    'transformers>=4.55,<5', 'peft>=0.17,<1',
-                    'accelerate>=1,<2', 'bitsandbytes>=0.46,<1',
-                    'huggingface_hub>=0.34,<1'], check=True)
-    check = "import torch, transformers, peft, accelerate, bitsandbytes, huggingface_hub; print('Training imports OK:', 'torch', torch.__version__, 'transformers', transformers.__version__, 'peft', peft.__version__, 'hub', huggingface_hub.__version__)"
-    subprocess.run([sys.executable, '-c', check], check=True)
-    print('Training dependencies are ready. Resolver warnings about preinstalled Gradio or Diffusers can be ignored when this import check passes.')
-    """),
-    code("""
-    import hashlib, json, pathlib, zipfile
-    matches = list(pathlib.Path('/kaggle/input').rglob('kaalastra-kaggle-sft.zip'))
-    expected_zip = 'EXPECTED_SHA256_VALUE'
-    expected_files = EXPECTED_FILE_HASHES_VALUE
-    if len(matches) == 1:
-        package = matches[0]
-        actual = hashlib.sha256(package.read_bytes()).hexdigest()
-        assert actual == expected_zip, f'ZIP hash differs from local package manifest: {actual}'
-        data_dir = pathlib.Path('/kaggle/working/kaalastra_sft')
-        data_dir.mkdir(parents=True, exist_ok=True)
-        with zipfile.ZipFile(package) as archive:
-            for member in archive.infolist():
-                path = pathlib.PurePosixPath(member.filename)
-                assert not path.is_absolute() and '..' not in path.parts
-            archive.extractall(data_dir)
-    else:
-        # Kaggle can automatically unpack ZIP uploads into the attached Dataset.
-        roots = [p.parent for p in pathlib.Path('/kaggle/input').rglob('train.jsonl')
-                 if (p.parent / 'train_kaggle.py').exists()]
-        assert len(roots) == 1, f'Attach the private KAALASTRA Dataset; found roots: {roots}'
-        data_dir = roots[0]
-    for name, expected in expected_files.items():
-        actual = hashlib.sha256((data_dir / name).read_bytes()).hexdigest()
-        assert actual == expected, f'{name} hash mismatch: {actual}'
-    print('Verified data directory:', data_dir)
-    print(json.dumps(json.loads((data_dir / 'manifest.json').read_text())['splits'], indent=2))
-    """.replace("EXPECTED_SHA256_VALUE", EXPECTED_SHA256).replace("EXPECTED_FILE_HASHES_VALUE", repr(EXPECTED_FILES))),
-    markdown("""
-    ## Model access
-
-    The default is `nvidia/Llama-3.1-Nemotron-Nano-8B-v1`, which uses a conventional Llama architecture. The 9B v2 hybrid model requires `mamba-ssm`; Kaggle's Python 3.13 environment may not have a compatible build. The training script runs a real forward/backward preflight. Report the exact model ID and revision in the run manifest.
-
-If Hugging Face requests authentication, create a **read-only** token and store it as a Kaggle Notebook Secret named `HF_TOKEN`; do not paste it into a cell.
-    """),
-    code("""
-    import os
-    MODEL_ID = 'nvidia/Llama-3.1-Nemotron-Nano-8B-v1'
-    try:
-        from kaggle_secrets import UserSecretsClient
-        token = UserSecretsClient().get_secret('HF_TOKEN')
-        if token:
-            os.environ['HF_TOKEN'] = token
-            print('Hugging Face read token loaded from Kaggle Secrets.')
-    except Exception:
-        print('No Kaggle HF_TOKEN secret; trying public model access.')
-    """),
-    markdown("""
-    ## Pilot: 60 optimization steps
-
-    This downloads the base model, loads it in NF4 4-bit, adds LoRA adapters, runs one forward/backward check, then trains. Model download time is separate from training time. The script saves checkpoints and validation metrics under `/kaggle/working/kaalastra_pilot`.
-    """),
-    code("""
-    import subprocess, sys
-    pilot_dir = pathlib.Path('/kaggle/working/kaalastra_pilot')
-    command = [sys.executable, str(data_dir / 'train_kaggle.py'),
-        '--data-dir', str(data_dir), '--output-dir', str(pilot_dir),
-        '--model', MODEL_ID, '--pilot', '--max-steps', '60', '--max-length', '1024']
-    print('Running:', ' '.join(command))
-    single_gpu_env = os.environ.copy()
-    single_gpu_env['CUDA_VISIBLE_DEVICES'] = '0'
-    subprocess.run(command, check=True, env=single_gpu_env)
-    print('Pilot adapter:', pilot_dir / 'adapter')
-    """),
-    markdown("""
-    ## Optional larger run
-
-    Start only after the pilot completes and its validation loss is finite. Change `RUN_FULL` to `True`. This run uses the full prepared training set at 1,536 tokens and up to 600 optimizer steps. If the session stops after checkpoints were saved, set `RESUME_FULL=True` and rerun this cell in the same saved working environment.
-    """),
-    code("""
-    RUN_FULL = False
-    RESUME_FULL = False
-    full_dir = pathlib.Path('/kaggle/working/kaalastra_full')
-    if RUN_FULL:
-        command = [sys.executable, str(data_dir / 'train_kaggle.py'),
-            '--data-dir', str(data_dir), '--output-dir', str(full_dir),
-            '--model', MODEL_ID, '--max-steps', '600', '--max-length', '1536']
-        if RESUME_FULL:
-            command.append('--resume')
-        subprocess.run(command, check=True, env=single_gpu_env)
-        print('Full adapter:', full_dir / 'adapter')
-    else:
-        print('Full run skipped. Set RUN_FULL=True after reviewing the pilot.')
-    """),
-    markdown("""
-    ## Optional held-out comparison
-
-    This compares the untouched base model and the trained adapter on the **same** balanced test sample. It reports precision, recall, F1, false-positive rate, CWE accuracy on true positives, and invalid JSON count. It does not report vulnerable-line or patch metrics because those labels are not independently verified. Run it once for the final adapter; repeated test-driven tuning compromises the holdout.
-    """),
-    code("""
-    RUN_TEST = False
-    final_dir = full_dir if RUN_FULL else pilot_dir
-    if RUN_TEST:
-        command = [sys.executable, str(data_dir / 'evaluate_kaggle.py'),
-            '--data-dir', str(data_dir), '--run-dir', str(final_dir), '--limit-per-class', '30']
-        subprocess.run(command, check=True, env=single_gpu_env)
-        print((final_dir / 'heldout_results.json').read_text())
-    else:
-        print('Held-out test skipped. Set RUN_TEST=True once for the final adapter.')
-    """),
-    code("""
-    import zipfile
-    chosen = final_dir if (final_dir / 'adapter').exists() else pilot_dir
-    assert (chosen / 'adapter').exists(), 'No completed adapter to export.'
-    archive = pathlib.Path('/kaggle/working/kaalastra_adapter.zip')
-    with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as out:
-        for path in (chosen / 'adapter').rglob('*'):
-            if path.is_file():
-                out.write(path, path.relative_to(chosen))
-        for name in ('run_manifest.json', 'validation_metrics.json', 'heldout_results.json', 'metrics.jsonl'):
-            path = chosen / name
-            if path.exists():
-                out.write(path, name)
-    print('Download this from the Kaggle Output pane:', archive)
-    print('Includes adapter, run manifest, and available metrics. Checkpoints remain in the run directory.')
-    """),
-    markdown("""
-    ## Optional: review your own code
-
-    Put one source file under `/kaggle/working/`, set its path and language below, and change `RUN_REVIEW` to `True`. The script loads the **exact base revision recorded at training time** plus your adapter and prints a security-only response. Treat its findings as hypotheses until independently verified.
-    """),
-    code("""
-    RUN_REVIEW = False
-    CODE_FILE = '/kaggle/working/code_to_review.py'
-    LANGUAGE = 'python'
-    if RUN_REVIEW:
-        assert pathlib.Path(CODE_FILE).is_file(), f'Missing code file: {CODE_FILE}'
-        subprocess.run([sys.executable, str(data_dir / 'review_kaggle.py'),
-            '--run-dir', str(chosen), '--code-file', CODE_FILE, '--language', LANGUAGE],
-            check=True, env=single_gpu_env)
-    else:
-        print('Review skipped. Set CODE_FILE, LANGUAGE, and RUN_REVIEW=True to use your adapter.')
-    """),
-    markdown("""
-    ## Preserve the result
-
-    Download `/kaggle/working/kaalastra_adapter.zip` promptly from the working/output pane. To retain a Kaggle version, use **Save Version** and check the output-saving option. **Save & Run All** starts a fresh run from cell one; set the full-run switch first if that is the run you want to preserve. A live session can end without preserving unsaved working files. Keep the source dataset private if you do not intend to redistribute the included code.
-    """),
-]
-notebook = {"cells": cells, "metadata": {"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
-    "language_info": {"name": "python"}}, "nbformat": 4, "nbformat_minor": 5}
-out = ROOT / "notebooks/kaalastra_nemotron_kaggle.ipynb"
-out.parent.mkdir(parents=True, exist_ok=True)
-out.write_text(json.dumps(notebook, indent=1), encoding="utf-8")
-print(out)
+If a session disappears, only downloaded or persisted outputs can be recovered. The ZIP includes adapter, tokenizer, manifests,
+thresholds, predictions, logs and available metrics. Trainer checkpoints stay in the output directory, outside the portable ZIP.
+See `docs/KAGGLE_TRAINING.md` in the project for recovery and inference commands.
+''')]
+notebook = {'cells': cells, 'metadata': {'kernelspec': {'display_name': 'Python 3', 'language': 'python', 'name': 'python3'},
+    'language_info': {'name': 'python'}, 'kaggle': {'accelerator': 'gpu', 'isInternetEnabled': True}}, 'nbformat': 4, 'nbformat_minor': 5}
+for index, entry in enumerate(cells): entry['id'] = f'kaalastra-v2-{index}'
+path = ROOT / 'notebooks/kaalastra_nemotron_kaggle.ipynb'
+path.write_text(json.dumps(notebook, indent=2), encoding='utf-8')
+print(path)
