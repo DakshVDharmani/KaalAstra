@@ -91,7 +91,6 @@ def run_semgrep_scan(repo_path: str, target_files: Optional[List[str]] = None) -
             errors="replace",
             timeout=25
         )
-        # Parse JSON from stdout (find first '{')
         out_text = proc.stdout.strip()
         start_idx = out_text.find("{")
         if start_idx != -1:
@@ -108,25 +107,24 @@ def run_semgrep_scan(repo_path: str, target_files: Optional[List[str]] = None) -
                     message=r.get("extra", {}).get("message", "Semgrep security finding"),
                     code_snippet=r.get("extra", {}).get("lines", "").strip()
                 ))
-    except Exception as e:
-        # Graceful fallback: return empty list if Semgrep times out or fails
+    except Exception:
         pass
 
     return findings
 
-def run_finsec_scan(repo_path: str, target_files: Optional[List[str]] = None) -> List[ScannerFinding]:
+def run_finsec_scan(repo_path: str, target_files: Optional[List[str]] = None, commit_hash: Optional[str] = None) -> List[ScannerFinding]:
     """Run FineSec-AI (elsiddik/finsec_detector) code vulnerability detection."""
     try:
         from finsec_detector import scan_files_with_finsec
-        return scan_files_with_finsec(repo_path, target_files or [])
-    except Exception as e:
+        return scan_files_with_finsec(repo_path, target_files or [], commit_hash=commit_hash)
+    except Exception:
         return []
 
-def run_all_scanners(repo_path: str, changed_files: List[str], enable_finsec: bool = False) -> List[ScannerFinding]:
+def run_all_scanners(repo_path: str, changed_files: List[str], enable_finsec: bool = False, commit_hash: Optional[str] = None) -> List[ScannerFinding]:
     """Orchestrate all static, AI and secret checks."""
     all_findings = []
     all_findings.extend(scan_secrets_in_files(repo_path, changed_files))
     all_findings.extend(run_semgrep_scan(repo_path, changed_files))
     if enable_finsec:
-        all_findings.extend(run_finsec_scan(repo_path, changed_files))
+        all_findings.extend(run_finsec_scan(repo_path, changed_files, commit_hash=commit_hash))
     return all_findings

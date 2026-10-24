@@ -1,4 +1,4 @@
-﻿import * as vscode from 'vscode';
+import * as vscode from 'vscode';
 import * as path from 'path';
 import { execFile } from 'child_process';
 import { KaalAstraFixItem, ScanResult, GitCommitItem } from './types';
@@ -136,13 +136,14 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
       }
     }
 
-    // 2. Ensure targetDir is a valid git repository
-    if (!fs.existsSync(path.join(targetDir, '.git'))) {
+    // 2. Ensure targetDir points to the target application repository
+    if (path.basename(targetDir) !== 'demo-target') {
       const candidates = [
         path.join(targetDir, 'demo-target'),
         path.join(projectRoot, 'demo-target'),
         path.join(path.dirname(this._extensionUri.fsPath), 'demo-target'),
-        path.join(path.dirname(path.dirname(this._extensionUri.fsPath)), 'demo-target')
+        path.join(path.dirname(path.dirname(this._extensionUri.fsPath)), 'demo-target'),
+        'd:\\Avdhut\\programing\\Metro Hackathon\\demo-target'
       ];
       for (const d of candidates) {
         if (fs.existsSync(path.join(d, '.git'))) {
@@ -687,7 +688,7 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
     <header class="header">
       <div class="header-top">
         <div class="title-wrap">
-          <span class="icon-pulse">ðŸ›¡ï¸</span>
+          <span class="icon-pulse">&#x1F6E1;&#xFE0F;</span>
           <span class="title">KaalAstra Hub</span>
         </div>
         <div class="actions">
@@ -708,7 +709,7 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
 
       <!-- Commit Status Banner -->
       <div id="fileBanner" class="file-banner">
-        <span class="file-icon">âš¡</span>
+        <span class="file-icon">&#x26A1;</span>
         <span id="activeFileName" class="file-name">Target: HEAD (b186cfb)</span>
         <span id="issueCountBadge" class="badge badge-count">1 alert</span>
       </div>
@@ -717,13 +718,13 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
       <div class="engine-selector-container">
         <div class="engine-selector-bar">
           <button id="btnOptHybrid" class="engine-btn active" data-engine="hybrid" title="Option 1: Hybrid Mode (AST + Graph + FinSec AI)">
-            <span class="engine-icon">ðŸŒ</span> Hybrid (All)
+            <span class="engine-icon">&#x1F310;</span> Hybrid (All)
           </button>
           <button id="btnOptFinSec" class="engine-btn" data-engine="finsec" title="Option 2: Pure FinSec-AI (elsiddik/finsec_detector only)">
-            <span class="engine-icon">ðŸ¤–</span> FinSec AI
+            <span class="engine-icon">&#x1F916;</span> FinSec AI
           </button>
           <button id="btnOptBaseline" class="engine-btn" data-engine="baseline" title="Option 3: Diff-Only Baseline Review">
-            <span class="engine-icon">âš¡</span> Baseline
+            <span class="engine-icon">&#x26A1;</span> Baseline
           </button>
         </div>
         <div id="engineStatusBanner" class="engine-status-text">Active: <b>Hybrid Sentinel</b> (AST + Graph + FinSec AI)</div>
@@ -735,20 +736,20 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
         <button class="tab-btn" data-filter="CRITICAL">Critical <span id="countCritical">(0)</span></button>
         <button class="tab-btn" data-filter="HIGH">High <span id="countHigh">(0)</span></button>
         <button class="tab-btn" data-filter="topology">Topology <span id="countTopology"></span></button>
-        <button class="tab-btn" data-filter="tavily">Ask Tavily <span id="countTavily">ðŸ”</span></button>
+        <button class="tab-btn" data-filter="tavily">Ask Tavily <span id="countTavily">&#x1F50D;</span></button>
       </div>
     </header>
 
     <!-- Empty States -->
     <div id="emptyStateNoEditor" class="empty-state hidden">
-      <div class="empty-icon">ðŸ“</div>
+      <div class="empty-icon">&#x1F4C1;</div>
       <h3>No Commit Scanned</h3>
       <p>Click "Scan Commit" to trigger Graph-Aware Security Analysis.</p>
-      <button id="btnSampleNoEditor" class="btn btn-primary btn-center">âš¡ Scan Commit Now</button>
+      <button id="btnSampleNoEditor" class="btn btn-primary btn-center">&#x26A1; Scan Commit Now</button>
     </div>
 
     <div id="emptyStateClean" class="empty-state hidden">
-      <div class="empty-icon text-success">âœ¨</div>
+      <div class="empty-icon text-success">&#x2728;</div>
       <h3>Repository Secure!</h3>
       <p>No new regressions or authorization bypasses detected.</p>
     </div>
@@ -756,7 +757,7 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
     <!-- Tavily Research Panel -->
     <div id="tavilyPanel" class="tavily-panel hidden">
       <div class="snapshot-header">
-        <span>ðŸ“¸ Code Snapshot (Vulnerability Marked)</span>
+        <span>&#x1F4F8; Code Snapshot (Vulnerability Marked)</span>
         <span id="snapLocation" style="color: var(--vscode-foreground); opacity: 0.7; font-size: 10px;">Select an issue to inspect</span>
       </div>
       <div id="snapCode" class="snapshot-box">// Capture a code snippet or click "Ask Tavily" on any finding card</div>
@@ -781,8 +782,8 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
     <!-- Topology & Lifecycle Graphs Panel -->
     <div id="topologyPanel" class="topology-panel hidden">
       <div class="subtabs-bar">
-        <button id="subtabLifecycle" class="subtab-btn active" data-sub="lifecycle">ðŸ”„ Before & After Flow</button>
-        <button id="subtabTopology" class="subtab-btn" data-sub="topology">ðŸ•¸ï¸ Call Topology</button>
+        <button id="subtabLifecycle" class="subtab-btn active" data-sub="lifecycle">&#x1F504; Before &amp; After Flow</button>
+        <button id="subtabTopology" class="subtab-btn" data-sub="topology">&#x1F578;&#xFE0F; Call Topology</button>
       </div>
 
       <div class="commit-toolbar">
@@ -791,15 +792,9 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
           <select id="commitSelector" class="commit-select">
             <option value="HEAD">HEAD (b186cfb - refactor payment)</option>
           </select>
-          <button id="btnAnalyzeCommit" class="btn btn-secondary icon-btn" title="Analyze Selected Git Commit">
-            âš¡
-          </button>
-          <button id="btnOpenGraphFile" class="btn btn-secondary" title="Open .graph file in VS Code Editor" style="font-size: 10px; white-space: nowrap;">
-            ðŸ“„ .graph
-          </button>
-          <button id="btnOpenGraphWorkspace" class="btn btn-secondary" title="Open interactive flowchart in full editor workspace" style="font-size: 10px; white-space: nowrap; color: #38bdf8;">
-            ⤢ Workspace Tab
-          </button>
+          <button id="btnAnalyzeCommit" class="btn btn-secondary icon-btn" title="Analyze Selected Git Commit">&#x26A1;</button>
+          <button id="btnOpenGraphFile" class="btn btn-secondary" title="Open .graph file in VS Code Editor" style="font-size: 10px; white-space: nowrap;">&#x1F4C4; .graph</button>
+          <button id="btnOpenGraphWorkspace" class="btn btn-secondary" title="Open interactive flowchart in full editor workspace" style="font-size: 10px; white-space: nowrap; color: #38bdf8;">&#x2922; Workspace Tab</button>
         </div>
       </div>
 
@@ -811,8 +806,8 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
             <span id="lifecycleBadge" class="badge" style="background: rgba(14, 165, 233, 0.15); color: #38bdf8; font-size: 9px;">COMPONENT FLOW</span>
           </div>
           <div class="vgraph-mode-toggle">
-            <button id="btnModeVisual" class="mode-btn active" data-mode="visual">ðŸŽ¨ Visual Graph</button>
-            <button id="btnModeText" class="mode-btn" data-mode="text">ðŸ“„ .graph Text</button>
+            <button id="btnModeVisual" class="mode-btn active" data-mode="visual">&#x1F3A8; Visual Graph</button>
+            <button id="btnModeText" class="mode-btn" data-mode="text">&#x1F4C4; .graph Text</button>
           </div>
         </div>
 
@@ -831,8 +826,8 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
             <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; font-size: 9px;">ERASER FLOWCHART</span>
           </div>
           <div class="vgraph-mode-toggle">
-            <button id="btnTopoVisual" class="mode-btn active" data-topomode="visual">🎨 Flowchart</button>
-            <button id="btnTopoText" class="mode-btn" data-topomode="text">📄 ASCII</button>
+            <button id="btnTopoVisual" class="mode-btn active" data-topomode="visual">&#x1F3A8; Flowchart</button>
+            <button id="btnTopoText" class="mode-btn" data-topomode="text">&#x1F4C4; ASCII</button>
           </div>
         </div>
         <div id="visualTopologyBox" class="vgraph-flow"></div>
@@ -848,7 +843,7 @@ export class CodeFixViewProvider implements vscode.WebviewViewProvider {
     <!-- Bottom Helper / Sample Button -->
     <footer class="footer">
       <button id="btnCreateSample" class="btn btn-ghost">
-        <span>ðŸ•¸ï¸ View Call-Graph Topology</span>
+        <span>&#x1F578;&#xFE0F; View Call-Graph Topology</span>
       </button>
     </footer>
   </div>

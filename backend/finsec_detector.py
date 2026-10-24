@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import subprocess
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from config import FINSEC_MODEL_ID, HF_TOKEN
@@ -26,7 +27,6 @@ def is_local_model_cached(model_id: str = "elsiddik/finsec_detector") -> bool:
     cache_path = Path.home() / ".cache" / "huggingface" / "hub" / repo_folder_name
     if not cache_path.exists():
         return False
-    # Check if snapshots exist with safetensors
     snapshots = list(cache_path.glob("snapshots/*"))
     for s in snapshots:
         if list(s.glob("*.safetensors")) or list(s.glob("*.bin")):
@@ -51,9 +51,21 @@ def analyze_code_heuristic(code_snippet: str) -> List[Dict[str, Any]]:
     for pattern, cwe, sev, desc, fix in sensitive_fn_patterns:
         for idx, line in enumerate(lines, 1):
             if re.search(pattern, line, re.IGNORECASE):
-                # Check if next 5 lines contain an auth/role check
-                context = "\n".join(lines[idx:min(len(lines), idx + 8)])
-                if not re.search(r"(role\s*===|user\.isAdmin|unauthorized|authenticate)", context, re.IGNORECASE):
+                # Filter out comment lines when inspecting for real executable auth checks
+                context_lines = []
+                for cl in lines[idx:min(len(lines), idx + 10)]:
+                    s = cl.strip()
+                    if s.startswith("//") or s.startswith("/*") or s.startswith("*"):
+                        continue
+                    context_lines.append(s)
+                context = "\n".join(context_lines)
+
+                # An authentic check must have an executable check verifying role/admin and throwing/returning error
+                has_auth_check = bool(
+                    re.search(r"if\s*\(.*?(?:role|admin|auth|user).*?\)", context, re.IGNORECASE) and
+                    re.search(r"(throw|return\s+(?:res|next|false|error)|unauthorized)", context, re.IGNORECASE)
+                )
+                if not has_auth_check:
                     vulns.append({
                         "severity": sev,
                         "cwe": cwe,
@@ -210,14 +222,12 @@ class FinSecDetector:
             try:
                 raw_output = self.run_inference_local(code_snippet)
             except Exception as e:
-                # If local model failed or was interrupted, fall back gracefully
                 print(f"[!] Local FinSec inference unavailable: {e}. Using deterministic AppSec engine.")
                 return analyze_code_heuristic(code_snippet)
         else:
             try:
                 raw_output = self.run_inference_api(code_snippet)
             except Exception:
-                # If API is unreachable or rate limited, fall back to AppSec engine
                 return analyze_code_heuristic(code_snippet)
 
         # 2. Extract strictly JSON from model output
@@ -248,7 +258,6 @@ class FinSecDetector:
                 vulns = []
 
         if not vulns:
-            # Fallback if model output was empty or malformed
             vulns = analyze_code_heuristic(code_snippet)
 
         return vulns
@@ -256,7 +265,8 @@ class FinSecDetector:
 def scan_files_with_finsec(
     repo_path: str,
     target_files: List[str],
-    detector: Optional[FinSecDetector] = None
+    detector: Optional[FinSecDetector] = None,
+    commit_hash: Optional[str] = None
 ) -> List[ScannerFinding]:
     """Audit modified files with elsiddik/finsec_detector and produce KaalAstra ScannerFindings."""
     findings: List[ScannerFinding] = []
@@ -267,17 +277,28 @@ def scan_files_with_finsec(
 
     for rel_path in target_files:
         full_p = base_p / rel_path
-        if not full_p.exists() or full_p.is_dir():
-            continue
 
-        try:
-            with open(full_p, "r", encoding="utf-8", errors="replace") as f:
-                code_content = f.read()
-                f.seek(0)
-                file_lines = f.readlines()
-        except Exception:
-            continue
+        code_content = None
+        # Try fetching exact commit version if commit_hash is supplied
+        if commit_hash:
+            try:
+                cmd = ["git", "-C", str(base_p), "show", f"{commit_hash}:{rel_path}"]
+                res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace")
+                if res.returncode == 0 and res.stdout.strip():
+                    code_content = res.stdout
+            except Exception:
+                pass
 
+        if code_content is None:
+            if not full_p.exists() or full_p.is_dir():
+                continue
+            try:
+                with open(full_p, "r", encoding="utf-8", errors="replace") as f:
+                    code_content = f.read()
+            except Exception:
+                continue
+
+        file_lines = code_content.splitlines()
         vulns = detector.analyze_code(code_content)
 
         for v in vulns:

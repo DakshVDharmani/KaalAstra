@@ -52,9 +52,19 @@ def scan(
         if engine == "finsec":
             from finsec_detector import scan_files_with_finsec
             from llm_engine import KaalAstraFinding, ReviewReport
-            finsec_raw = scan_files_with_finsec(repo_p, changed_rel_paths)
+            finsec_raw = scan_files_with_finsec(repo_p, changed_rel_paths, commit_hash=commit.commit_hash)
             findings = []
             for idx, sf in enumerate(finsec_raw, 1):
+                patch_diff = ""
+                if "Suggested Fix:" in sf.message and sf.code_snippet:
+                    fix_text = sf.message.split("Suggested Fix:")[1].strip().rstrip(".)")
+                    patch_diff = (
+                        f"--- a/{sf.file_path}\n"
+                        f"+++ b/{sf.file_path}\n"
+                        f"@@ -{sf.start_line},1 +{sf.start_line},2 @@\n"
+                        f" {sf.code_snippet}\n"
+                        f"+  {fix_text}\n"
+                    )
                 findings.append(KaalAstraFinding(
                     finding_id=f"FINSEC-{idx:03d}",
                     title=f"FinSec-AI: {sf.rule_id}",
@@ -69,7 +79,7 @@ def scan(
                     why_diff_only_misses_this="Detected by neural AppSec pattern matching in source AST",
                     proposed_remediation="Apply suggested secure code fix",
                     patch_file=sf.file_path,
-                    patch_unified_diff="",
+                    patch_unified_diff=patch_diff,
                     regression_test_summary="FinSec neural verification"
                 ))
             report = ReviewReport(
@@ -81,7 +91,7 @@ def scan(
                 external_advisories=[]
             )
         else:
-            scanner_findings = run_all_scanners(repo_p, changed_rel_paths, enable_finsec=use_finsec)
+            scanner_findings = run_all_scanners(repo_p, changed_rel_paths, enable_finsec=use_finsec, commit_hash=commit.commit_hash)
 
             advisories = []
             if not is_baseline and subgraph and subgraph.unprotected_entrypoints:
@@ -125,7 +135,7 @@ def scan(
     # Step 3: Local Static & FinSec Analysis
     with console.status("[bold blue]3/5 Running static AST and FinSec AI analyzers...[/bold blue]", spinner="dots"):
         changed_rel_paths = [f.file_path for f in commit.changed_files]
-        scanner_findings = run_all_scanners(repo_p, changed_rel_paths, enable_finsec=use_finsec)
+        scanner_findings = run_all_scanners(repo_p, changed_rel_paths, enable_finsec=use_finsec, commit_hash=commit.commit_hash)
 
     # Step 4: Tavily Threat Research
     advisories = []
@@ -138,9 +148,19 @@ def scan(
         with console.status("[bold magenta]5/5 Running Pure FineSec-AI (elsiddik/finsec_detector) code analysis...[/bold magenta]", spinner="dots"):
             from finsec_detector import scan_files_with_finsec
             from llm_engine import KaalAstraFinding, ReviewReport
-            finsec_raw = scan_files_with_finsec(repo_p, changed_rel_paths)
+            finsec_raw = scan_files_with_finsec(repo_p, changed_rel_paths, commit_hash=commit.commit_hash)
             findings = []
             for idx, sf in enumerate(finsec_raw, 1):
+                patch_diff = ""
+                if "Suggested Fix:" in sf.message and sf.code_snippet:
+                    fix_text = sf.message.split("Suggested Fix:")[1].strip().rstrip(".)")
+                    patch_diff = (
+                        f"--- a/{sf.file_path}\n"
+                        f"+++ b/{sf.file_path}\n"
+                        f"@@ -{sf.start_line},1 +{sf.start_line},2 @@\n"
+                        f" {sf.code_snippet}\n"
+                        f"+  {fix_text}\n"
+                    )
                 findings.append(KaalAstraFinding(
                     finding_id=f"FINSEC-{idx:03d}",
                     title=f"FinSec-AI: {sf.rule_id}",
@@ -155,7 +175,7 @@ def scan(
                     why_diff_only_misses_this="Detected by neural AppSec pattern matching in source AST",
                     proposed_remediation="Apply suggested secure code fix",
                     patch_file=sf.file_path,
-                    patch_unified_diff="",
+                    patch_unified_diff=patch_diff,
                     regression_test_summary="FinSec neural verification"
                 ))
             report = ReviewReport(
