@@ -1,337 +1,304 @@
-# KAALASTRA
+<div align="center">
 
-### The Weapon Against the Dark Age of Code
+<img src="docs/kaalastra-hero.svg" alt="KaalAstra — commit-aware security for code teams" width="100%">
 
-**October went dark. KAALASTRA awakened.**
+<p><strong>Commit-aware application security, inside VS Code.</strong></p>
+<p>See what changed. Trace who can reach it. Review a fix before it touches your code.</p>
+<p><strong>Hackathon prototype · MIT · VS Code 1.85+</strong></p>
 
-An AI-powered, developer-first security extension for Visual Studio Code, envisioned to detect vulnerabilities, expose malicious dependencies, trace attack paths, and help developers secure applications before threats reach production.
+</div>
 
-The standalone [security run graph](FRONTEND/security-graph/README.md) generates a compact, directly readable `.graph` text flow from the last pushed GitHub commit to the workspace after fixes. It shows frontend/backend break, fix, and verification steps; the extension and model integration can supply findings later.
+> **Project in one sentence:** KaalAstra reviews a selected Git commit, combines changed-file security checks with repository call-graph context, and presents findings and human-reviewed fix proposals in Visual Studio Code.
 
-## 📸 Screenshot Capture with **Tavily**
+## At a glance
 
-| Feature | How it works | Usage |
-|---------|--------------|-------|
-| **One‑click screenshot** of the current editor, selected code region, or the whole VS Code window | The extension calls the **Tavily** API (client‑side, no token stored in the repo) to render a PNG that is saved to the workspace `/.kaalastra/screenshots/` folder. | 1. Open the command palette (`Ctrl+Shift+P`). \n2. Run **“KaalAstra: Capture Screenshot”**. \n3. Choose **Full Window**, **Active Editor**, or **Selection**. \n4. The image appears in the VS Code explorer and can be attached to a bug report or documentation. |
-| **Configurable quality & size** | Settings `kaalastra.screenshotQuality` (0‑100) and `kaalastra.maxScreenshotSizeKB`. | Adjust in *Settings → Extensions → KaalAstra*. |
-| **Privacy‑first** | Images are generated locally; the Tavily request only contains the rendered bitmap – no source code is transmitted. | No secret storage or network traffic beyond the image generation service. |
-
-> **Note:** Tavily is an **optional** dependency. If no API key is defined, the command falls back to the built‑in VS Code `window.showSaveDialog` workflow.
-
-## 📈 Graph Visualisation with **Graphify**
-
-KaalAstra now ships a tiny **graph view** powered by the open‑source **Graphify** library.
-
-| Component | Description |
-|-----------|-------------|
-| **Security‑run graph** (`*.graph` files) | Generated after a scan, it encodes the flow from *source discovery* → *vulnerability detection* → *remediation suggestion* → *verification*. |
-| **Graphify web‑view** | A lightweight VS Code Webview renders the `.graph` file as an interactive directed graph. Nodes can be expanded/collapsed, and clicking a node opens the corresponding file/line in the editor. |
-| **Live‑update** | After each audit run the extension writes a fresh `run.graph` and refreshes the Graphify panel automatically. |
-| **Configuration** | `kaalastra.graphifyTheme` (light/dark), `kaalastra.graphifyLayout` (`dagre`, `elk`). |
-
-> **Screenshot of the graph view** (generated with the new Tavily command) is automatically saved as `run_graph.png` in the screenshots folder.
-
----
-
-## 🌑 The Dark Age of Code
-
-Modern software development runs on trust.
-
-Every dependency installed, every package imported, every AI-generated function accepted, and every line pushed into production becomes part of a growing software supply chain.
-
-But what happens when that trust is compromised?
-
-From malicious npm packages and vulnerable Node.js dependencies to PHP security flaws, compromised libraries, exposed credentials, and insecure AI-generated code, the modern development ecosystem faces an expanding attack surface.
-
-Traditional security workflows often discover vulnerabilities too late, after code has already been committed, deployed, or exploited.
-
-**Security should begin where software is written.**
-
-That is the vision behind KAALASTRA.
-
-## Security before every push
-
-### Coding agent workflow in the VS Code extension
-
-The Hybrid, FinSec AI, and Baseline controls select the security assessment mode. The separate **Coding agent** control chooses who proposes code changes: OpenAI, Anthropic, or Gemini. Select **Set API key** to save a key for the chosen provider in VS Code SecretStorage, or **Clear** to remove it. Keys are not stored in the workspace or sent to the sidebar webview. If needed, change the model through `kaalastra.codingModels.openai`, `kaalastra.codingModels.anthropic`, or `kaalastra.codingModels.gemini` in VS Code settings.
-
-After a scan, select **Propose Fix** on a finding or **Propose All**. The extension asks before sending the affected file and finding to the selected provider, shows the returned edit in a VS Code diff, and applies it only after you choose **Apply Edit**. Run tests and scan again before treating the change as verified. Hybrid and Baseline assessment still use the backend's `GEMINI_API_KEY`; the coding provider key is configured separately.
-
-**A security check belongs in the path to production, not on a backlog after release.** A single unsafe change can expose credentials, customer data, money, or a trusted communication channel. Review code, dependencies, and behavior before merging or deploying. Recheck after fixes and upgrades.
-
-This mission is personal to us. Members of our community at **Vishwakarma Institute of Technology (VIT), Pune** report that the Training and Placement Office email account was compromised and misused. We have not found a public incident report confirming the scope, method, or root cause. In particular, **there is no evidence here that a PHP vulnerability caused that incident**. One compromised identity can make harmful messages appear credible.
-
-The wider threat is documented:
-
-- **PHP:** [CERT-In's April 2025 advisory](https://www.cert-in.org.in/s2cMainServlet?VLCODE=CIVN-2025-0063&pageid=PUBVLNOTES01) describes PHP vulnerabilities with possible security bypass, remote code execution, data manipulation, and denial of service.
-- **Node.js:** The [Node.js July 2025 security release](https://nodejs.org/en/blog/vulnerability/july-2025-security-releases) documents vulnerabilities in active release lines. Keep runtimes and dependencies current, and test upgrades before deployment.
-- **CBI cyber fraud case:** In [a July 2025 CBI case reported by India's Press Information Bureau](https://www.pib.gov.in/PressReleaseIframePage.aspx?PRID=2149124&lang=2&reg=48), investigators alleged that cyber victims' funds flowed into a mule account. This illustrates the cost of account abuse; it is **not** a claim that CBI systems or data were breached.
-- **Railway ticketing:** [Indian Railways reported](https://www.pib.gov.in/PressReleasePage.aspx?PRID=2227511&lang=1&reg=6) deactivating 3.03 crore suspicious user IDs in 2025 and described controls against unauthorized accounts and automated abuse. This is **not** evidence of a railway database breach.
-
-### Expectations for contributors and AI coding agents
-
-When changing this project or code analyzed with it:
-
-1. **Before pushing:** inspect changed files and dependencies for secrets, injection, unsafe deserialization, broken authentication or authorization, exposed endpoints, and insecure configuration. Check applicable security advisories.
-2. **Verify fixes:** run relevant tests and scans, review their output, and confirm the behavior behind each finding is addressed. Treat AI-generated patches as proposals until verified.
-3. **Report honestly:** distinguish confirmed findings from hypotheses, record affected files and evidence, and state what was not tested. Never turn an alleged incident into a proven breach or assign a cause without evidence.
-4. **Escalate serious findings:** call attention to credential exposure, exploitable vulnerabilities, and data access risks before a merge or release. Avoid publishing sensitive details or live credentials in reports.
-
-**Find the risk, fix it, verify it, then push.**
-
-## ðŸ”± Why KAALASTRA?
-
-Inspired by Indian mythology and Sanskrit, KAALASTRA combines two powerful ideas:
-
-- **Kaal (à¤•à¤¾à¤²):** Time, mortality, and the inevitable passage of eras.
-- **Astra (à¤…à¤¸à¥à¤¤à¥à¤°):** A weapon, traditionally associated with extraordinary power.
-
-Together, KAALASTRA represents a weapon forged to confront the darkest threats of modern software development.
-
-Just as ancient warriors relied on powerful astras to defend against formidable enemies, modern developers need intelligent tools to defend against increasingly sophisticated cyber threats.
-
-**Our philosophy: Detect early. Understand deeply. Defend continuously.**
-
-## ðŸ›¡ï¸ What Is KAALASTRA?
-
-KAALASTRA is a proposed intelligent cybersecurity companion integrated directly into Visual Studio Code.
-
-Rather than functioning solely as a conventional vulnerability scanner, KAALASTRA aims to combine static code analysis, dependency intelligence, contextual security reasoning, and AI-assisted remediation into a unified developer experience.
-
-Its goal is to help developers understand not only **what is vulnerable**, but also **why it matters, how it could be exploited, and how to fix it safely**.
-
-## âš¡ Planned Capabilities
-
-### 1. Intelligent Vulnerability Detection
-
-Analyze source code for common security weaknesses, including:
-
-- SQL injection
-- Cross-site scripting (XSS)
-- Command injection
-- Path traversal
-- Insecure authentication and authorization
-- Hardcoded secrets
-- Unsafe deserialization
-- Security misconfigurations
-
-### 2. Software Supply Chain Protection
-
-Examine project dependencies and package manifests to identify known vulnerabilities and suspicious packages.
-
-Planned ecosystem support includes:
-
-- npm and Node.js
-- PHP and Composer
-- Python and pip
-- Additional package ecosystems in future releases
-
-Potential capabilities include dependency risk assessment, vulnerable-version identification, and safer upgrade recommendations.
-
-### 3. AI-Assisted Security Analysis
-
-Use AI-assisted reasoning to interpret security findings in their surrounding code context.
-
-The intended workflow includes identifying vulnerable patterns, explaining potential consequences, and recommending focused remediations.
-
-AI-generated suggestions will require verification through deterministic checks, testing, and developer review.
-
-### 4. Attack Path Intelligence
-
-Go beyond isolated warnings by examining relationships between vulnerable components.
-
-KAALASTRA aims to help developers understand how an exposed entry point, insecure function, or vulnerable dependency could contribute to a larger attack path.
-
-### 5. Secure Coding Assistance
-
-Provide actionable guidance directly inside the editor, including:
-
-- Clear vulnerability explanations
-- Relevant source locations
-- Suggested remediations
-- Secure coding alternatives
-- Links to applicable security standards
-- Guidance for validating fixes
-
-### 6. Developer-First Security Experience
-
-KAALASTRA is designed around a simple principle:
-
-**Security tools should empower developers, not overwhelm them.**
-
-The envisioned experience prioritizes meaningful findings, contextual explanations, manageable alerts, and minimal disruption to existing development workflows.
-
-## ðŸ§  Proposed Architecture
-
-```text
-                 KAALASTRA
-                     |
-             VS Code Extension
-                     |
-            Security Orchestrator
-                     |
-        +------------+------------+
-        |            |            |
-    Code Scanner  Dependency   Secret Scanner
-        |          Analyzer         |
-        +------------+------------+
-                     |
-             Finding Correlation
-                     |
-              AI Analysis Layer
-                     |
-            Risk Prioritization
-                     |
-          Remediation Suggestions
-                     |
-              VS Code UI
-```
-
-The architecture is conceptual and may evolve during implementation.
-
-## 🛠️ Proposed Technology Stack
-
-| Component | Technology |
+| | |
 |---|---|
-| Extension platform | VS Code Extension API |
-| Primary language | TypeScript |
-| Runtime | Node.js |
-| Code analysis | Static analysis and language-aware parsing |
-| Dependency analysis | Package manifests and vulnerability advisories |
-| Security standards | OWASP, CWE, CVE |
-| AI assistance | Configurable AI analysis layer |
-| Interface | VS Code diagnostics, commands, and webviews |
-| Testing | Automated tests and security-focused test cases |
+| **Problem** | A risky code change can look harmless until you trace how the changed function is reached. |
+| **Primary user** | Developers who want security feedback while reviewing code. |
+| **Core idea** | Start with the commit diff, add focused caller context, then put evidence and a proposed fix beside the code. |
+| **Interface** | Visual Studio Code extension, Python CLI, and an experimental local HTTP API. |
+| **Demo application** | An intentionally vulnerable Express payment-gateway sample with a public webhook and refund flow. |
+| **Current status** | Hackathon prototype. AI review and optional integrations depend on configured services. |
+| **License** | MIT. |
 
-## ðŸš€ Getting Started
+## Contents
 
-The repository includes the Python analysis backend, the VS Code extension, and a payment gateway demo workspace. The backend and demo are stored directly in this repository so a clone is self-contained.
+- [The problem](#the-problem-kaalastra-is-built-around)
+- [Pune context and real-world examples](#why-this-matters-in-pune-and-beyond)
+- [Demo and walkthrough](#the-demo-one-commit-two-paths-to-a-refund)
+- [Implemented features and honest scope](#what-is-implemented)
+- [Innovation and OpenAI sponsor fit](#why-this-is-innovative)
+- [Architecture and data handling](#architecture)
+- [Quickstart](#quickstart)
+- [Dataset and model work](#dataset-and-model-work)
+- [Development and roadmap](#development)
+- [License](#license)
 
-Set up the Python environment and optional API keys:
+## The problem KaalAstra is built around
 
-```bash
+A changed function does not exist in isolation. An authorization check may be removed from a service because an API route already has middleware—while a second, public webhook calls the same service directly. A diff-only review may miss the path from the unauthenticated entry point to the sensitive operation.
+
+KaalAstra focuses the review on a selected commit and uses a lightweight repository graph to add caller context. The goal is to make the security question concrete:
+
+> **Which changed behavior matters, who can reach it, and what evidence supports the finding?**
+
+## Why this matters in Pune and beyond
+
+Our motivation includes a community-reported incident associated with **Vishwakarma Institute of Technology (VIT), Pune**: people in our college community described a Training and Placement Office email account as compromised and misused. We have not independently verified the incident's scope, method, or root cause, and we have found no public incident report establishing them. **We do not claim that a software vulnerability caused it or that KaalAstra would have detected it.** It shaped a practical question for us: when people trust a message because it appears to come from a familiar institution, how do we make software trust boundaries easier to inspect?
+
+Public cases show why careful, evidence-led security work matters:
+
+| Example | What the source reports | What we do **not** infer |
+|---|---|---|
+| **PHP security advisory** | CERT-In's April 2025 note describes multiple PHP vulnerabilities that could enable security bypass, remote code execution, data manipulation, or denial of service. | This is not evidence that the Pune college incident involved PHP. |
+| **Node.js security release** | The Node.js project published July 2025 security fixes, including a path-normalization traversal bypass affecting active release lines. | A runtime advisory is not proof that a particular application is exploitable. |
+| **Cyber-fraud investigation** | A July 2025 CBI case reported by PIB describes allegations that ₹3.81 crore reached a mule account in one day and was layered through other accounts. | This is not a claim that CBI systems were breached or that the fraud began with a code vulnerability. |
+| **Railway ticketing abuse controls** | The Ministry of Railways reported deactivating 3.03 crore suspicious user IDs in 2025 and described anti-bot and account controls. | Suspicious account activity is not evidence of a railway database breach. |
+
+Sources: [CERT-In PHP advisory](https://www.cert-in.org.in/s2cMainServlet?VLCODE=CIVN-2025-0063&pageid=PUBVLNOTES01) · [Node.js July 2025 security release](https://nodejs.org/en/blog/vulnerability/july-2025-security-releases) · [PIB report on the CBI case](https://www.pib.gov.in/PressReleaseIframePage.aspx?PRID=2149124&lang=2&reg=48) · [PIB report on Railway ticketing controls](https://www.pib.gov.in/PressReleasePage.aspx?PRID=2227511&lang=1&reg=6).
+
+KaalAstra did not investigate these incidents. They are context for the problem, not evidence of product performance.
+
+## The demo: one commit, two paths to a refund
+
+The bundled Express sample contains an intentionally vulnerable payment flow:
+
+- The regular <code>POST /refund</code> route uses authentication middleware.
+- The public <code>POST /stripe-callback</code> route trusts an incoming event body, creates a system user with an admin role, and calls <code>refundTransaction</code>.
+- The service has no longer-enforced role check, so the same sensitive function can be reached through a second path.
+
+The graph's purpose is to make that contrast visible during a commit review.
+
+~~~mermaid
+flowchart LR
+    A["Authenticated API route"] --> B["Authentication middleware"]
+    B --> C["refundTransaction"]
+    D["Public Stripe callback"] --> E["Unverified event payload"]
+    E --> F["System user marked admin"]
+    F --> C
+    C --> G["Refund operation"]
+    classDef safe fill:#123c39,stroke:#62e6bd,color:#eafff7
+    classDef risk fill:#48242b,stroke:#ff7186,color:#fff1f3
+    class A,B safe
+    class D,E,F,G risk
+~~~
+
+This is a **teaching fixture**, not a live payment integration. Do not deploy the demo service or send real payment events to it.
+
+### Demo walkthrough
+
+1. Open the KaalAstra repository in VS Code and launch **Launch KaalAstra Extension**.
+2. Run **KaalAstra: Scan Current Commit** or choose a recent commit in the sidebar.
+3. Select **Hybrid** to review the commit diff with available local checks and graph context.
+4. Open the graph view to inspect the public callback-to-refund path beside the authenticated API path.
+5. On a finding, choose **Propose Fix**. KaalAstra asks before sending the affected file and finding to the selected coding provider.
+6. Review the proposed edit in VS Code's diff view. The file changes only after you explicitly choose **Apply Edit**.
+7. Run relevant tests and rescan. A proposal is not proof that the issue is fixed.
+
+## What is implemented
+
+| Capability | Current behavior |
+|---|---|
+| **Commit capture** | Reads a selected Git commit and its changed files. The VS Code picker lists recent commits. |
+| **Changed-file checks** | Scans changed files for configured Semgrep rules and common hard-coded secret patterns. Semgrep must be installed separately; the Python requirements file does not install it. |
+| **Repository context** | Builds a lightweight graph from JavaScript, TypeScript, and Python source, then focuses the result on changed components and upstream callers. This is a heuristic graph, not a complete language-semantic call graph. |
+| **AI review** | Sends the selected commit diff plus focused graph context to the configured reviewer. With <code>HF_TOKEN</code>, the backend uses Hugging Face Inference Providers and defaults to <code>Qwen/Qwen2.5-Coder-7B-Instruct</code>; without it, Gemini can be used when <code>GEMINI_API_KEY</code> is configured. |
+| **Review modes** | Hybrid combines graph context, local checks, and AI review. Baseline skips graph construction. FinSec runs the optional FinSec detector path. |
+| **Fix proposals** | Offers OpenAI, Anthropic, or Gemini as a separate coding provider. Provider keys are stored in VS Code SecretStorage; applying an edit requires a second explicit confirmation. |
+| **Security flow artifact** | Writes a readable <code>.graph</code> lifecycle summary and findings JSON under <code>.kaalastra</code> in the scanned repository. |
+| **Advisory questions** | Provides an explicit Ask Tavily workflow. Automatic VS Code JSON scans do not wait on Tavily research. |
+| **HTTP API** | The Python backend exposes local FastAPI endpoints, including <code>/health</code>, <code>/api/scan</code>, and an experimental <code>/api/scan/stream</code>. |
+
+### Honest scope
+
+KaalAstra is a prototype, not a full SAST or software-composition-analysis product.
+
+- **Dependency CVE and malicious-package scanning is not implemented yet.** Dependency intelligence is a roadmap item.
+- The repository graph uses lightweight parsing and call-name matching; it can miss dynamic dispatch, framework behavior, aliases, and cross-language flows.
+- Semgrep results depend on a working Semgrep installation and network access for its rule packs where required.
+- AI findings are hypotheses for human review. A clean result does not prove the commit or repository is secure.
+- No published benchmark currently demonstrates detection accuracy, reduced false positives, or superiority to another product.
+- The bundled demo is deliberately vulnerable and must remain a local teaching target.
+
+## Why this is innovative
+
+Most fast code checks answer **“What pattern matched?”** KaalAstra tries to add the next question: **“Who can reach the changed operation?”**
+
+The differentiator is the review shape, not a claim of a new detection algorithm:
+
+1. **Commit-first scope** keeps the AI review anchored to a concrete change.
+2. **Caller context** can expose a public route that reaches a function whose normal API callers are authenticated.
+3. **Evidence in the editor** links findings to files, lines, and a graph view.
+4. **Human-controlled remediation** separates analysis, proposal, diff review, and application into distinct steps.
+
+## OpenAI sponsor fit and judging evidence
+
+KaalAstra is a developer-security tool, not an OpenAI model wrapper. OpenAI is one of the optional coding providers in the human-reviewed remediation workflow; the security-review backend can use Hugging Face or Gemini. This separation is intentional and visible in the product.
+
+| Hackathon criterion | Weight | Evidence in this repository |
+|---|---:|---|
+| **Technical Implementation** | 30% | VS Code extension, Python CLI/backend, Git commit capture, changed-file checks, focused call graph, and a runnable Express security scenario. |
+| **Innovation & Creativity** | 25% | The demo distinguishes a protected API path from a public webhook path into the same refund function, making caller context the central review question. |
+| **Sponsor / Track Fit** | 25% | OpenAI is available as a coding provider for a proposal-and-review workflow. The user controls whether a file is sent, inspects the diff, and separately approves applying it. |
+| **Execution & Completeness** | 20% | Setup and demo steps, a local sample target, CLI modes, visible limitations, and an explicit verify-after-fix loop. |
+
+**What we are not claiming:** OpenAI powers the core vulnerability detector; the detector is benchmark-proven; dependency scanning is complete; fixes are automatically verified; or a clean scan guarantees safety.
+
+## Architecture
+
+~~~mermaid
+flowchart TD
+    DEV["Developer selects a commit"]
+    GIT["Git capture: commit diff + changed files"]
+    LOCAL["Changed-file checks: secrets + optional Semgrep"]
+    GRAPH["Repository graph: changed components + callers"]
+    AI["AI review: HF Inference or Gemini"]
+    UI["VS Code findings + graph"]
+    FIX["Optional coding proposal"]
+    DIFF["Human reviews side-by-side diff"]
+    APPLY["Explicit apply, then tests and rescan"]
+
+    DEV --> GIT
+    GIT --> LOCAL
+    GIT --> GRAPH
+    LOCAL --> AI
+    GRAPH --> AI
+    AI --> UI
+    UI --> FIX
+    FIX --> DIFF
+    DIFF --> APPLY
+~~~
+
+### Data handling
+
+- The backend loads <code>HF_TOKEN</code>, <code>GEMINI_API_KEY</code>, and <code>TAVILY_API_KEY</code> from the repository-root <code>.env</code>. Keep that file local and never commit credentials.
+- When external AI review is enabled, the selected commit diff and focused graph context are sent to the configured review provider.
+- The coding-agent workflow sends the affected file and finding only after its confirmation dialog. Keys are stored in VS Code SecretStorage, not the workspace or webview.
+- Ask Tavily is a separate user-triggered workflow. Review provider and coding provider credentials are separate settings.
+- Read your provider's terms and ensure you are permitted to send the relevant source code before enabling a cloud integration.
+
+## Quickstart
+
+### 1. Install backend dependencies
+
+From the repository root:
+
+~~~bash
 python -m venv .venv
-# Windows PowerShell
+~~~
+
+Activate the environment:
+
+~~~powershell
 .venv\Scripts\Activate.ps1
-# macOS/Linux: source .venv/bin/activate
+~~~
+
+~~~bash
+source .venv/bin/activate
+~~~
+
+Install the backend packages:
+
+~~~bash
 python -m pip install -r backend/requirements.txt
+~~~
+
+Copy <code>.env.example</code> to <code>.env</code>. Configure <code>HF_TOKEN</code> for Hugging Face review or <code>GEMINI_API_KEY</code> as the fallback provider. Add <code>TAVILY_API_KEY</code> only if you want the advisory workflow. Set the HF token to a Hugging Face token with Inference Providers access. The default review model can be changed with <code>HF_REVIEW_MODEL</code>.
+
+Windows PowerShell:
+
+~~~powershell
+Copy-Item .env.example .env
+~~~
+
+macOS/Linux:
+
+~~~bash
 cp .env.example .env
-```
+~~~
 
-Add your Gemini API key to `.env` to enable AI review. Tavily and Hugging Face tokens are optional. The scanner can run without those optional integrations, though AI review requires Gemini.
+### 2. Build and launch the VS Code extension
 
-Build and launch the VS Code extension:
-
-```bash
+~~~bash
 npm --prefix vscode-extension install
 npm --prefix vscode-extension run compile
 code .
-```
+~~~
 
-In VS Code, choose **Launch KaalAstra Extension** from Run and Debug (F5). It opens the bundled `demo-target` workspace. The extension locates `backend/cli.py` relative to the repository and runs scans against the open workspace, so no sibling folders or hard-coded machine paths are needed.
+In VS Code, open **Run and Debug**, choose **Launch KaalAstra Extension**, and press **F5**. The launch profile opens the bundled <code>demo-target</code> workspace. You can also open the KaalAstra panel and run **KaalAstra: Scan Current Commit**.
 
-To start the optional HTTP API from the repository root:
+If Python is not found automatically, set <code>kaalastra.pythonPath</code> to the Python executable that has the backend requirements installed.
 
-```bash
+### 3. Run the CLI
+
+Hybrid review:
+
+~~~bash
+python backend/cli.py scan demo-target --engine hybrid --no-verify
+~~~
+
+Diff-only baseline:
+
+~~~bash
+python backend/cli.py scan demo-target --engine baseline --json --no-verify
+~~~
+
+The CLI reads the selected commit (default <code>HEAD</code>). For a quick local run without external AI credentials, the backend returns local scanner findings and reports that AI review is unavailable.
+
+### Optional: run the local API
+
+~~~bash
 python backend/server.py
-```
+~~~
 
-The API listens on `127.0.0.1` using `KAALASTRA_PORT` (default `8000`) and exposes `/health`, `/api/scan`, and `/api/scan/stream`.
+The server binds to <code>127.0.0.1</code> and uses <code>KAALASTRA_PORT</code> (default <code>8000</code>). It provides <code>/health</code>, <code>/api/scan</code>, and experimental server-sent events at <code>/api/scan/stream</code>.
 
-Installation instructions will be updated as the implementation progresses.
+## Dataset and model work
 
-## ðŸ—ºï¸ Development Roadmap
+The repository also contains bounded vulnerability-dataset preparation and an exploratory Kaggle QLoRA training workflow. This is research work, separate from the extension's runtime scanner.
 
-### Phase 1 â€” Foundation
-- [ ] Initialize VS Code extension architecture
-- [ ] Implement workspace and file discovery
-- [ ] Build the security diagnostics interface
-- [ ] Establish a modular scanning pipeline
+| Source | Current use | Caveat |
+|---|---|---|
+| **DeltaSecommits** | 2,290 filtered vulnerable/fixed candidates; project-level train/validation/test split. | Candidate labels do not establish root cause, attack path, or exact vulnerable line. |
+| **PrimeVul** | Paired C/C++ examples plus a separately curated strict pool. | Published paired splits share projects; they are not independent cross-project evidence. |
+| **Patchwork CVE** | 15,904 metadata records for CVE/project indexing and exclusion. | Metadata only; generated analysis is not used as training code. |
+| **SVEN** | Kept for evaluation fixtures. | Isolated from training data. |
 
-### Phase 2 â€” Core Security
-- [ ] Implement initial static analysis rules
-- [ ] Add dependency vulnerability detection
-- [ ] Introduce secret detection
-- [ ] Integrate vulnerability advisory sources
+The current v2 package contains 3,998 training, 504 validation, and 971 test examples before token filtering. A previous pilot detected 1 of 30 vulnerable examples; the v2 run has no measured result published here. These numbers describe dataset preparation, **not model accuracy**.
 
-### Phase 3 â€” Intelligent Analysis
-- [ ] Introduce contextual AI explanations
-- [ ] Implement security finding correlation
-- [ ] Develop attack-path analysis
-- [ ] Add risk prioritization
+Details: [dataset preparation notes](datasets/README.md) · [Kaggle training guide](docs/KAGGLE_TRAINING.md) · [training audit](docs/TRAINING_AUDIT.md) · [dataset manifest](datasets/manifests/downloads.json).
 
-### Phase 4 â€” Remediation
-- [ ] Generate suggested security fixes
-- [ ] Validate fixes against tests and rules
-- [ ] Introduce developer-controlled remediation
-- [ ] Improve false-positive handling
+## Development
 
-### Phase 5 â€” Release
-- [ ] Conduct security and performance testing
-- [ ] Prepare documentation
-- [ ] Package the VS Code extension
-- [ ] Publish the initial release
+~~~bash
+npm --prefix vscode-extension run compile
+python -m py_compile backend/*.py
+~~~
 
-## 🔐 Security and Privacy Principles
+The VS Code extension source is in <code>vscode-extension/src</code>; webview assets are in <code>vscode-extension/media</code>. The Python CLI and scanning pipeline are in <code>backend</code>. The example Express application is in <code>demo-target</code>. Dataset tooling and manifests live under <code>scripts</code> and <code>datasets</code>.
 
-As a security-focused developer tool, KAALASTRA aims to follow security-first engineering practices.
+Contributions that improve changed-code coverage, graph accuracy, scanner reliability, explainability, latency, tests, or privacy disclosures are welcome. Please include reproduction steps and distinguish confirmed behavior from hypotheses.
 
-- **Local-first analysis:** Prefer local processing wherever practical.
-- **Explicit data handling:** Clearly disclose when source code or metadata may be sent to external services.
-- **Least privilege:** Request only permissions necessary for extension functionality.
-- **Developer control:** Never silently modify source code or dependencies.
-- **Secure defaults:** Protect credentials, tokens, scan reports, and sensitive project information.
-- **Transparent findings:** Distinguish verified vulnerabilities from AI-generated hypotheses.
+## Roadmap
 
-These are project design goals and will require implementation and testing before release.
+- Add dependency vulnerability and package-risk analysis.
+- Improve parser coverage and graph precision across frameworks.
+- Make scanner availability and partial-analysis states explicit in reports.
+- Evaluate against held-out, independently sourced projects and publish reproducible metrics.
+- Package the extension for reproducible installation and add end-to-end demo assets.
 
-## ðŸ¤ Contributing
+## License
 
-Contributions, suggestions, and security research are welcome as the project develops.
-
-Potential contribution areas include static analysis, package ecosystem support, vulnerability research, AI-assisted remediation, performance optimization, and extension UI development.
-
-Contribution guidelines will be published as the repository matures.
-
-## âš ï¸ Disclaimer
-
-KAALASTRA is intended to assist developers in identifying and understanding software security risks.
-
-No automated security tool can guarantee that an application is free from vulnerabilities. Findings and AI-generated recommendations should be reviewed and validated before use in production.
-
-KAALASTRA is not a substitute for comprehensive security testing, code review, or professional security assessments.
-
-## ðŸ“œ License
-
-License to be determined.
+MIT. See [LICENSE](LICENSE).
 
 ---
 
-### KAALASTRA
+<div align="center">
 
-**Forged in Bharat. Built for the world.**
+**Find the path. Understand the change. Review the fix.**
 
-*When code enters its darkest age, a weapon awakens.*
+<sub>Built in Pune, India · Designed for developers everywhere</sub>
 
-**October went dark. KAALASTRA awakened.**
+</div>
 
-## Security data foundation
-
-KAALASTRA's dataset work is built on published vulnerability research and real security fixes, with provenance, deduplication, and separate evaluation data recorded from the start. The following sources are downloaded locally; dataset artifacts are excluded from Git.
-
-| Dataset | Role in this project | Local status |
-| --- | --- | --- |
-| [DeltaSecommits](https://huggingface.co/datasets/rufimelo/DeltaSecommits) | Real vulnerable/fixed code pairs across languages; 2,290 filtered candidates | Downloaded and preprocessed |
-| [PrimeVul](https://github.com/DLVulDet/PrimeVul) | Research-grade C/C++ vulnerable/fixed pairs and benign examples; 3,737 filtered training pairs plus 54,430 strictly isolated full-split candidates | Downloaded and preprocessed |
-| [Patchwork CVE](https://github.com/TayR-D/patchwork-cve) | CVE, CWE, repository, and fix metadata; 15,904 non-refused records indexed | Downloaded; metadata only |
-| [SVEN](https://github.com/eth-sri/sven) | Security evaluation fixtures, kept outside training | Downloaded and isolated |
-
-The [dataset manifest](datasets/manifests/downloads.json) records exact files, sizes, hashes, and source links. The [dataset preparation notes](datasets/README.md) explain filtering and usage limits. Dataset acquisition is a foundation for model development; performance claims will be made only after reproducible held-out evaluation.
-
-### Bounded Kaggle training and comparison
-
-The v2 package contains **3,998 training**, **504 validation**, and **971 test** function-level examples before token filtering. Training is class balanced and prioritizes paired fixed-code negatives. Projects, whitespace-normalized code hashes and vulnerability IDs are isolated across splits; near-clone leakage and upstream label errors remain limitations.
-
-The [notebook](notebooks/kaalastra_nemotron_kaggle.ipynb) runs one bounded QLoRA classification job, validation threshold selection, paired base-versus-adapter evaluation and persistent export. Follow the [Kaggle guide](docs/KAGGLE_TRAINING.md) with the matching dataset ZIP. The configured total budget is 3h30 including setup, with a two-hour training cap; actual epoch coverage depends on GPU throughput and downloads.
-
-The previous pilot missed 29 of 30 vulnerable examples and did not establish useful performance. V2 corrects training and evaluation defects documented in the [training audit](docs/TRAINING_AUDIT.md); v2 accuracy has not yet been measured. It targets improvement in F1 and balanced accuracy against the same base model, with explicit recall and false-positive constraints. No SOTA, commercial-product superiority, whole-project detection or patch-correctness claim is established.
