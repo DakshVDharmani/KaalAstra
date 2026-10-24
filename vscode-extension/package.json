@@ -1,0 +1,107 @@
+{
+  "name": "kaalastra-sentinel",
+  "displayName": "KaalAstra — Graph-Aware Security Sentinel",
+  "description": "Commit-triggered, graph-aware code security analysis with automated patch verification",
+  "version": "1.0.0",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters",
+    "Programming Languages",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onView:kaalastra.sidebarView"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "KaalAstra Coding Agent",
+      "properties": {
+        "kaalastra.codingModels.openai": { "type": "string", "default": "gpt-4.1", "description": "OpenAI model used for coding proposals." },
+        "kaalastra.codingModels.anthropic": { "type": "string", "default": "claude-sonnet-4-5", "description": "Anthropic model used for coding proposals." },
+        "kaalastra.codingModels.gemini": { "type": "string", "default": "gemini-2.5-pro", "description": "Gemini model used for coding proposals." },
+        "kaalastra.pythonPath": { "type": "string", "default": "", "description": "Python executable for the KaalAstra backend. Defaults to the VS Code Python interpreter or a workspace .venv." }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "kaalastra-panel",
+          "title": "KaalAstra",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "kaalastra-panel": [
+        {
+          "type": "webview",
+          "id": "kaalastra.sidebarView",
+          "name": "Security Sentinel"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "kaalastra.scanCurrentCommit",
+        "title": "KaalAstra: Scan Current Commit",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "kaalastra.applyAllFixes",
+        "title": "KaalAstra: Propose Fixes with Coding Agent",
+        "icon": "$(check-all)"
+      },
+      {
+        "command": "kaalastra.askTavilyForSelection",
+        "title": "KaalAstra: Snapshot Code & Ask Tavily",
+        "icon": "$(search)"
+      },
+      {
+        "command": "kaalastra.openGraphWorkspace",
+        "title": "KaalAstra: Open Security Graph in Workspace",
+        "icon": "$(graph)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "kaalastra.openGraphWorkspace",
+          "when": "view == kaalastra.sidebarView",
+          "group": "navigation@0"
+        },
+        {
+          "command": "kaalastra.scanCurrentCommit",
+          "when": "view == kaalastra.sidebarView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "kaalastra.applyAllFixes",
+          "when": "view == kaalastra.sidebarView",
+          "group": "navigation@2"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "kaalastra.askTavilyForSelection",
+          "group": "kaalastra@1",
+          "when": "editorHasSelection"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
+    "watch": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --watch"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.20.1",
+    "typescript": "^5.3.3"
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "schema": "kaalastra.binary-risk.v2",
+  "passed": true,
+  "splits": {
+    "train": {
+      "rows": 3998,
+      "classes": {
+        "0": 1999,
+        "1": 1999
+      },
+      "sources": {
+        "PrimeVul_full": 1053,
+        "PrimeVul": 1164,
+        "PrimeVul_fixed": 1164,
+        "DeltaSecommits": 617
+      },
+      "languages": {
+        "c_or_cpp": 3381,
+        "c": 168,
+        "php": 262,
+        "javascript": 97,
+        "python": 38,
+        "typescript": 10,
+        "cpp": 42
+      },
+      "projects": 618
+    },
+    "validation": {
+      "rows": 504,
+      "classes": {
+        "1": 326,
+        "0": 178
+      },
+      "sources": {
+        "PrimeVul": 178,
+        "DeltaSecommits": 148,
+        "PrimeVul_fixed": 178
+      },
+      "languages": {
+        "c_or_cpp": 356,
+        "php": 63,
+        "c": 67,
+        "javascript": 11,
+        "python": 2,
+        "cpp": 5
+      },
+      "projects": 174
+    },
+    "test": {
+      "rows": 971,
+      "classes": {
+        "1": 551,
+        "0": 420
+      },
+      "sources": {
+        "PrimeVul": 422,
+        "PrimeVul_fixed": 420,
+        "DeltaSecommits": 129
+      },
+      "languages": {
+        "c_or_cpp": 842,
+        "php": 64,
+        "javascript": 16,
+        "cpp": 7,
+        "c": 36,
+        "python": 6
+      },
+      "projects": 199
+    }
+  },
+  "limitations": [
+    "Near-duplicate semantic clones not excluded",
+    "Upstream labels not independently executed",
+    "No trusted patch, location, severity or attack-path targets",
+    "Prior v1 results inspected part of this test split"
+  ]
+}

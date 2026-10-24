@@ -1,0 +1,1929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KaalAstra • Security Flow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #09090b;
+      --card: #121215;
+      --card-hover: #17171b;
+      --border: #27272a;
+      --border-subtle: #1f1f23;
+      --text: #f4f4f5;
+      --text-muted: #a1a1aa;
+      --text-dim: #71717a;
+      --accent: #38bdf8;
+      --green: #22c55e;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --blue: #60a5fa;
+      --dot: rgba(255, 255, 255, 0.05);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Top Bar */
+    .topbar {
+      height: 48px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 50;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-logo {
+      width: 20px;
+      height: 20px;
+      background: #18181b;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: var(--text);
+    }
+
+    .brand-name {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--text);
+    }
+
+    .brand-divider {
+      color: var(--text-dim);
+      font-size: 12px;
+    }
+
+    .brand-tag {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    /* Segment Control (Linear style) */
+    .segmented-control {
+      display: flex;
+      background: #141417;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px;
+      gap: 2px;
+    }
+
+    .seg-btn {
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-muted);
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .seg-btn:hover {
+      color: var(--text);
+    }
+
+    .seg-btn.active {
+      background: #27272a;
+      color: var(--text);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .status-dot.alert {
+      background: var(--red);
+    }
+
+    .btn-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 5px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-size: 12px;
+    }
+
+    .btn-icon:hover {
+      background: #18181b;
+      color: var(--text);
+      border-color: #3f3f46;
+    }
+
+    /* Canvas Viewport */
+    .viewport {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background-color: var(--bg);
+      background-image: radial-gradient(var(--dot) 1px, transparent 1px);
+      background-size: 20px 20px;
+      cursor: grab;
+    }
+
+    .viewport.grabbing {
+      cursor: grabbing;
+    }
+
+    .canvas-world {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      transform-origin: 0 0;
+      will-change: transform;
+    }
+
+    /* Minimalist HUD (Bottom-left toolbar) */
+    .hud {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: #141417;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      z-index: 40;
+    }
+
+    .hud-btn {
+      width: 26px;
+      height: 26px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.12s;
+    }
+
+    .hud-btn:hover {
+      background: #27272a;
+      color: var(--text);
+    }
+
+    .hud-sep {
+      width: 1px;
+      height: 14px;
+      background: var(--border);
+      margin: 0 2px;
+    }
+
+    .hud-zoom {
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-dim);
+      padding: 0 6px;
+      min-width: 44px;
+      text-align: center;
+    }
+
+    /* SVG Lines Layer */
+    .svg-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 3000px;
+      height: 2000px;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .flow-edge {
+      fill: none;
+      stroke: #3f3f46;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      transition: stroke 0.15s;
+    }
+
+    .flow-edge.danger {
+      stroke: #ef4444;
+      stroke-dasharray: 4 4;
+    }
+
+    .flow-edge.verified {
+      stroke: #22c55e;
+    }
+
+    /* Edge Floating Label */
+    .edge-badge {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      background: #141417;
+      border: 1px solid var(--border);
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+      pointer-events: none;
+      z-index: 15;
+      white-space: nowrap;
+    }
+
+    .edge-badge.danger {
+      color: #f87171;
+      border-color: rgba(239, 68, 68, 0.35);
+      background: #1a0f12;
+    }
+
+    .edge-badge.verified {
+      color: #34d399;
+      border-color: rgba(34, 197, 94, 0.35);
+      background: #0d1813;
+    }
+
+    /* Nodes Container */
+    .nodes-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 3000px;
+      height: 2000px;
+      z-index: 20;
+    }
+
+    /* Node Card (Eraser / Minimalist n8n) */
+    .node {
+      position: absolute;
+      width: 250px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+    }
+
+    .node:hover {
+      border-color: #3f3f46;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+      transform: translateY(-1px);
+    }
+
+    .node.selected {
+      border-color: var(--text);
+      box-shadow: 0 0 0 1px var(--text), 0 8px 24px rgba(0, 0, 0, 0.6);
+    }
+
+    .node.danger-card {
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+    .node.danger-card:hover {
+      border-color: rgba(239, 68, 68, 0.6);
+    }
+
+    .node.verified-card {
+      border-color: rgba(34, 197, 94, 0.3);
+    }
+    .node.verified-card:hover {
+      border-color: rgba(34, 197, 94, 0.6);
+    }
+
+    /* Input & Output Ports */
+    .port {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #18181b;
+      border: 1.5px solid #52525b;
+      z-index: 30;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .port.input {
+      left: -5px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .port.output {
+      right: -5px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .node:hover .port {
+      border-color: var(--text);
+      background: #27272a;
+    }
+
+    /* Node Header */
+    .node-header {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .node-cat {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-dim);
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .node-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+    }
+
+    .badge-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--text-dim);
+    }
+
+    .badge-dot.green { background: var(--green); }
+    .badge-dot.red { background: var(--red); }
+    .badge-dot.amber { background: var(--amber); }
+    .badge-dot.blue { background: var(--blue); }
+
+    /* Node Body */
+    .node-body {
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .node-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.35;
+      letter-spacing: -0.01em;
+    }
+
+    .node-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .node-code {
+      background: #09090b;
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      padding: 4px 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+
+    /* Node Footer */
+    .node-footer {
+      padding: 6px 12px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--text-dim);
+      background: #0f0f12;
+      border-radius: 0 0 7px 7px;
+    }
+
+    .node-action {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-muted);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+
+    .node-action:hover {
+      color: var(--text);
+      background: var(--border);
+    }
+
+    /* Minimal Side Drawer */
+    .drawer {
+      position: absolute;
+      top: 48px;
+      right: 0;
+      width: 380px;
+      height: calc(100vh - 48px);
+      background: #111114;
+      border-left: 1px solid var(--border);
+      z-index: 60;
+      transform: translateX(100%);
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .drawer.open {
+      transform: translateX(0);
+    }
+
+    .drawer-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .drawer-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .drawer-close {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .drawer-close:hover {
+      color: var(--text);
+    }
+
+    .drawer-body {
+      padding: 16px;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .panel-block {
+      background: #09090b;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+
+    .panel-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+
+    .diff-container {
+      background: #060608;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px;
+      line-height: 1.5;
+      overflow-x: auto;
+    }
+
+    .diff-del { color: #f87171; background: rgba(239, 68, 68, 0.08); padding: 1px 4px; border-radius: 2px; display: block; }
+    .diff-add { color: #34d399; background: rgba(34, 197, 94, 0.08); padding: 1px 4px; border-radius: 2px; display: block; }
+
+    .blindspot-box {
+      border-left: 2px solid var(--amber);
+      background: rgba(245, 158, 11, 0.05);
+      padding: 8px 10px;
+      font-size: 11px;
+      color: #e4e4e7;
+      line-height: 1.45;
+      border-radius: 0 4px 4px 0;
+    }
+
+    /* Snip / Region Selection Mode */
+    .btn-snip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #18181b;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 5px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-snip:hover {
+      background: #27272a;
+      color: var(--text);
+      border-color: #3f3f46;
+    }
+
+    .btn-snip.active {
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.5);
+      color: var(--accent);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+    }
+
+    .viewport.snip-mode {
+      cursor: crosshair !important;
+    }
+
+    .viewport.snip-mode .node {
+      pointer-events: none;
+    }
+
+    /* Snip Banner Guide */
+    .snip-banner {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(18, 18, 21, 0.95);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      z-index: 55;
+      pointer-events: none;
+      backdrop-filter: blur(8px);
+    }
+
+    .snip-banner-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulseDot 1.5s infinite;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(0.8); }
+    }
+
+    .snip-banner kbd {
+      background: #27272a;
+      border: 1px solid #3f3f46;
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--text);
+    }
+
+    /* Selection Marquee */
+    .snip-marquee {
+      position: absolute;
+      border: 1.5px dashed var(--accent);
+      background: rgba(56, 189, 248, 0.08);
+      border-radius: 4px;
+      pointer-events: none;
+      z-index: 50;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+    }
+
+    .snip-dimensions {
+      position: absolute;
+      bottom: -22px;
+      right: 0;
+      background: #141417;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+
+    /* Floating Action Pill on selection mouseup */
+    .snip-action-pill {
+      position: absolute;
+      z-index: 65;
+      display: flex;
+      align-items: center;
+      background: #141417;
+      border: 1px solid rgba(56, 189, 248, 0.6);
+      border-radius: 6px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7), 0 0 16px rgba(56, 189, 248, 0.25);
+      padding: 3px;
+      gap: 3px;
+      animation: popInPill 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes popInPill {
+      from { opacity: 0; transform: scale(0.92) translateY(4px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .snip-ask-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: #09090b;
+      font-weight: 600;
+      font-size: 11px;
+      border: none;
+      border-radius: 4px;
+      padding: 5px 11px;
+      cursor: pointer;
+      transition: all 0.12s ease;
+      white-space: nowrap;
+    }
+
+    .snip-ask-btn:hover {
+      background: #7dd3fc;
+      transform: translateY(-0.5px);
+    }
+
+    .snip-pill-sep {
+      width: 1px;
+      height: 16px;
+      background: var(--border);
+      margin: 0 1px;
+    }
+
+    .snip-cancel-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .snip-cancel-btn:hover {
+      background: #27272a;
+      color: var(--text);
+    }
+
+    /* Drawer Tabs */
+    .drawer-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      padding: 0 16px;
+      background: #0d0d10;
+    }
+
+    .drawer-tab {
+      padding: 10px 12px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-dim);
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.12s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .drawer-tab:hover {
+      color: var(--text-muted);
+    }
+
+    .drawer-tab.active {
+      color: var(--text);
+      border-bottom-color: var(--accent);
+    }
+
+    /* Snapshot Preview Card */
+    .snapshot-preview-card {
+      background: #060608;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .snapshot-thumb {
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+      background: #09090b;
+      display: block;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .snapshot-meta {
+      padding: 7px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .tavily-chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tavily-chip {
+      background: #18181b;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+
+    .tavily-chip:hover {
+      background: #27272a;
+      color: var(--text);
+      border-color: #3f3f46;
+    }
+
+    .tavily-input-box {
+      display: flex;
+      gap: 6px;
+    }
+
+    .tavily-input {
+      flex: 1;
+      background: #09090b;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 7px 10px;
+      font-size: 11.5px;
+      color: var(--text);
+      outline: none;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .tavily-input:focus {
+      border-color: var(--accent);
+    }
+
+    .tavily-submit-btn {
+      background: var(--accent);
+      color: #09090b;
+      font-weight: 600;
+      border: none;
+      border-radius: 4px;
+      padding: 0 12px;
+      font-size: 11px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.12s;
+    }
+
+    .tavily-submit-btn:hover {
+      background: #7dd3fc;
+    }
+
+    .source-pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .source-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #18181b;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 2px 7px;
+      font-size: 10px;
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .source-pill:hover {
+      text-decoration: underline;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Minimal Top Bar -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo">🛡️</div>
+      <span class="brand-name">KaalAstra</span>
+      <span class="brand-divider">/</span>
+      <span class="brand-tag">Security Flow</span>
+    </div>
+
+    <!-- Segment Switcher -->
+    <div class="segmented-control">
+      <button class="seg-btn active" id="btnLifecycle" onclick="switchView('pipeline')">Lifecycle Flow</button>
+      <button class="seg-btn" id="btnTopology" onclick="switchView('topology')">Call Topology</button>
+    </div>
+
+    <div class="top-actions">
+      <!-- Screenshot & Ask Tavily Button -->
+      <button class="btn-snip" id="btnSnip" onclick="toggleSnipMode()" title="Screenshot / Snip to Ask Tavily (Shortcut: S)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+        <span>Snip & Ask Tavily</span>
+      </button>
+
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        <span id="topStatus">Clean Baseline</span>
+      </div>
+      <button class="btn-icon" onclick="toggleDrawer()" title="Toggle details inspector">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Viewport -->
+  <main class="viewport" id="viewport">
+    <div class="canvas-world" id="canvasWorld">
+      <svg class="svg-layer" id="svgLayer">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#3f3f46" />
+          </marker>
+          <marker id="arrow-danger" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#ef4444" />
+          </marker>
+          <marker id="arrow-verified" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#22c55e" />
+          </marker>
+        </defs>
+        <g id="edgesGroup"></g>
+      </svg>
+      <div id="labelsGroup"></div>
+      <div class="nodes-layer" id="nodesLayer"></div>
+    </div>
+
+    <!-- Minimal HUD Bar (Eraser style) -->
+    <div class="hud">
+      <button class="hud-btn" onclick="zoomIn()" title="Zoom In">+</button>
+      <button class="hud-btn" onclick="zoomOut()" title="Zoom Out">−</button>
+      <span class="hud-zoom" id="zoomText">100%</span>
+      <div class="hud-sep"></div>
+      <button class="hud-btn" onclick="fitView()" title="Fit view">⊡</button>
+      <button class="hud-btn" onclick="resetZoom()" title="Reset view">↺</button>
+      <div class="hud-sep"></div>
+      <button class="hud-btn" id="hudSnipBtn" onclick="toggleSnipMode()" title="Snip & Ask Tavily (S)">⛶</button>
+    </div>
+
+    <!-- Snip Guide Banner -->
+    <div id="snipBanner" class="snip-banner hidden">
+      <span class="snip-banner-dot"></span>
+      <span>Drag to select any node or graph region • Press <kbd>Esc</kbd> to cancel</span>
+    </div>
+
+    <!-- Snip Selection Marquee -->
+    <div id="snipMarquee" class="snip-marquee hidden">
+      <div class="snip-dimensions" id="snipDimensions">0 × 0</div>
+    </div>
+
+    <!-- Floating Action Pill (Appears at selection corner) -->
+    <div id="snipActionPill" class="snip-action-pill hidden">
+      <button class="snip-ask-btn" onclick="openTavilyWithSnip()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <span>Ask Tavily</span>
+      </button>
+      <div class="snip-pill-sep"></div>
+      <button class="snip-cancel-btn" onclick="cancelSnip()" title="Cancel selection">✕</button>
+    </div>
+  </main>
+
+  <!-- Side Inspector -->
+  <aside class="drawer" id="drawer">
+    <div class="drawer-header">
+      <div class="drawer-title" id="drawerTitle">Security Intelligence</div>
+      <button class="drawer-close" onclick="closeDrawer()">✕</button>
+    </div>
+
+    <div class="drawer-tabs">
+      <button class="drawer-tab active" id="tabInspector" onclick="switchDrawerTab('inspector')">Node Details</button>
+      <button class="drawer-tab" id="tabTavily" onclick="switchDrawerTab('tavily')">Tavily Intel 🔍</button>
+    </div>
+
+    <!-- Tab 1: Node Details Inspector -->
+    <div class="drawer-body" id="bodyInspector">
+      <div class="panel-block">
+        <div class="panel-label">Node Telemetry</div>
+        <div style="font-size:12px; font-weight:600; color:var(--text);" id="dNodeName">refundTransaction()</div>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:2px;" id="dNodeDesc">Modified in paymentService.js. Caller verification logic was offloaded.</div>
+      </div>
+
+      <div class="panel-block">
+        <div class="panel-label" style="display:flex; justify-content:space-between; align-items:center;">
+          <span>Remediation Patch Diff</span>
+          <button class="node-action" style="color:var(--accent); display:flex; align-items:center; gap:4px; font-weight:600;" onclick="askTavilyForCodeDiff()">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <span>Ask Tavily About This Code</span>
+          </button>
+        </div>
+        <div class="diff-container" id="drawerCodeDiff">
+--- a/src/services/paymentService.js
++++ b/src/services/paymentService.js
+@@ -3,4 +3,7 @@
+ function refundTransaction(id, user, amt) {
+<span class="diff-add">+  if (!user || user.role !== 'admin') {</span>
+<span class="diff-add">+    throw new Error('Unauthorized');</span>
+<span class="diff-add">+  }</span>
+        </div>
+      </div>
+
+      <div class="blindspot-box">
+        <strong style="color:#fbbf24;">Diff-Only Blindspot:</strong> Reviewing the git diff alone suggests auth was offloaded to route handlers. Graph resolution showed <code>/stripe-callback</code> calls it directly without middleware.
+      </div>
+
+      <div class="panel-block">
+        <div class="panel-label">Automated Verification</div>
+        <div style="font-size:11px; color:var(--green); display:flex; align-items:center; gap:6px;">
+          <span>✓</span>
+          <span>Unit tests: 10/10 passed</span>
+        </div>
+        <div style="font-size:11px; color:var(--green); display:flex; align-items:center; gap:6px; margin-top:4px;">
+          <span>✓</span>
+          <span>Semgrep AST check: clean</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: Ask Tavily Intelligence Assistant -->
+    <div class="drawer-body hidden" id="bodyTavily">
+      <!-- Screenshot Thumbnail Box -->
+      <div class="snapshot-preview-card">
+        <img id="tavilySnapshotImg" class="snapshot-thumb" alt="Captured Region" />
+        <div class="snapshot-meta">
+          <span id="tavilySnapshotDim">Captured Graph Region</span>
+          <span id="tavilySnapshotCount" style="color:var(--accent);">0 nodes</span>
+        </div>
+      </div>
+
+      <!-- Detected Context Chips -->
+      <div class="panel-block">
+        <div class="panel-label">Captured Context</div>
+        <div id="tavilyContextChips" style="display:flex; flex-wrap:wrap; gap:5px; font-size:11px;">
+          <span style="font-family:'JetBrains Mono', monospace; background:#18181b; padding:2px 6px; border-radius:3px; color:var(--text-muted);">paymentService.js</span>
+          <span style="font-family:'JetBrains Mono', monospace; background:rgba(239, 68, 68, 0.15); color:#f87171; padding:2px 6px; border-radius:3px;">CWE-306</span>
+        </div>
+      </div>
+
+      <!-- Quick Question Prompts -->
+      <div class="panel-block">
+        <div class="panel-label">Quick Inquiries</div>
+        <div class="tavily-chip-list">
+          <button class="tavily-chip" onclick="askTavilyWithPrompt('Why did this happen?')">Why did this happen?</button>
+          <button class="tavily-chip" onclick="askTavilyWithPrompt('Explain exploit path & attack vector')">Attack Vector</button>
+          <button class="tavily-chip" onclick="askTavilyWithPrompt('Find CVEs & authoritative advisories')">Recent CVEs</button>
+          <button class="tavily-chip" onclick="askTavilyWithPrompt('How do I fix this securely?')">Remediation Patch</button>
+        </div>
+      </div>
+
+      <!-- Custom Question Input -->
+      <div class="panel-block">
+        <div class="panel-label">Ask Any Question to Tavily</div>
+        <div class="tavily-input-box">
+          <input type="text" id="tavilyQueryInput" class="tavily-input" placeholder="Ask Tavily about this screenshot..." value="Why did this happen?" onkeydown="if(event.key==='Enter') submitTavilyQuery();" />
+          <button class="tavily-submit-btn" onclick="submitTavilyQuery()">
+            <span>Ask</span>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Research Output Box -->
+      <div class="panel-block" id="tavilyResultBlock" style="border-color: #38bdf8;">
+        <div class="panel-label" style="display:flex; justify-content:space-between; align-items:center;">
+          <span>Tavily Threat Intelligence</span>
+          <span id="tavilyStatusBadge" style="color:var(--accent); font-size:10px; text-transform:none;">Ready</span>
+        </div>
+        <div id="tavilyResponseText" style="font-size:11.5px; line-height:1.55; color:var(--text); white-space:pre-wrap; margin-top:6px;">
+Select any region on the graph canvas and ask Tavily to analyze threats, root causes, and security fixes.
+        </div>
+        <div id="tavilySources" class="source-pill-row"></div>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    let currentView = 'pipeline';
+    let zoom = 0.88;
+    let panX = 40;
+    let panY = 60;
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let selectedId = null;
+
+    const viewport = document.getElementById('viewport');
+    const canvasWorld = document.getElementById('canvasWorld');
+    const nodesLayer = document.getElementById('nodesLayer');
+    const edgesGroup = document.getElementById('edgesGroup');
+    const labelsGroup = document.getElementById('labelsGroup');
+    const zoomText = document.getElementById('zoomText');
+    const drawer = document.getElementById('drawer');
+
+    // Minimal dataset
+    const pipelineData = {
+      nodes: [
+        {
+          id: 'n-trigger',
+          x: 40,
+          y: 140,
+          cat: 'Trigger',
+          name: 'Git Baseline Push',
+          badge: 'b186cfb',
+          dot: 'blue',
+          desc: 'Captured baseline from origin/main.',
+          code: 'refactor: offload auth to route'
+        },
+        {
+          id: 'n-comp',
+          x: 340,
+          y: 140,
+          cat: 'Component',
+          name: 'paymentService.js',
+          badge: 'Modified',
+          dot: 'blue',
+          desc: 'Backend service handling sensitive refunds.',
+          code: 'function refundTransaction()'
+        },
+        {
+          id: 'n-break',
+          x: 640,
+          y: 80,
+          cat: 'Vulnerability',
+          name: 'Auth Bypass (CWE-306)',
+          badge: 'High',
+          dot: 'red',
+          cardClass: 'danger-card',
+          desc: 'Internal check removed; webhook callers can invoke without auth.',
+          code: 'webhooks.js -> refundTransaction()'
+        },
+        {
+          id: 'n-fix',
+          x: 940,
+          y: 80,
+          cat: 'Remediation',
+          name: 'Enforce Role Guard',
+          badge: 'Verified',
+          dot: 'green',
+          cardClass: 'verified-card',
+          desc: 'Defense-in-depth check added to function boundary.',
+          code: 'if (!user || user.role !== "admin")'
+        },
+        {
+          id: 'n-verify',
+          x: 1240,
+          y: 140,
+          cat: 'Verifier',
+          name: 'Automated Suite',
+          badge: '10/10 Pass',
+          dot: 'green',
+          cardClass: 'verified-card',
+          desc: 'Full test suite and Semgrep rules evaluated.',
+          code: 'npm test (1.2s)'
+        },
+        {
+          id: 'n-state',
+          x: 1540,
+          y: 140,
+          cat: 'State',
+          name: 'Workspace Clean',
+          badge: 'Ready',
+          dot: 'green',
+          desc: 'Remediated workspace passes all boundaries.',
+          code: 'Safe to deploy'
+        }
+      ],
+      edges: [
+        { from: 'n-trigger', to: 'n-comp', label: 'git diff' },
+        { from: 'n-comp', to: 'n-break', label: 'AST trace', danger: true },
+        { from: 'n-break', to: 'n-fix', label: 'synthesizes fix' },
+        { from: 'n-fix', to: 'n-verify', label: 'runs tests', verified: true },
+        { from: 'n-verify', to: 'n-state', label: 'verified', verified: true }
+      ]
+    };
+
+    const topologyData = {
+      nodes: [
+        {
+          id: 'top-api',
+          x: 60,
+          y: 50,
+          cat: 'Protected Route',
+          name: 'POST /api/orders/refund',
+          badge: 'JWT Guard',
+          dot: 'green',
+          desc: 'Admin dashboard endpoint.',
+          code: 'authMiddleware.requireRole("admin")'
+        },
+        {
+          id: 'top-webhook',
+          x: 60,
+          y: 260,
+          cat: 'External Entrypoint',
+          name: 'POST /stripe-callback',
+          badge: 'Unauthenticated',
+          dot: 'red',
+          cardClass: 'danger-card',
+          desc: 'Public webhook handler without caller validation.',
+          code: 'router.post("/stripe-callback", ...)'
+        },
+        {
+          id: 'top-guard',
+          x: 380,
+          y: 50,
+          cat: 'Middleware',
+          name: 'verifyAuthContext()',
+          badge: 'Enforced',
+          dot: 'green',
+          desc: 'Decodes bearer token and role claims.',
+          code: 'req.user = decodedToken'
+        },
+        {
+          id: 'top-sink',
+          x: 700,
+          y: 155,
+          cat: 'Sensitive Sink',
+          name: 'refundTransaction()',
+          badge: 'CWE-306',
+          dot: 'red',
+          cardClass: 'danger-card',
+          desc: 'Modified in PR; role validation was removed.',
+          code: 'src/services/paymentService.js:5'
+        },
+        {
+          id: 'top-fix',
+          x: 1020,
+          y: 155,
+          cat: 'Remediation',
+          name: 'Defensive Self-Check',
+          badge: 'Verified',
+          dot: 'green',
+          cardClass: 'verified-card',
+          desc: 'Defense-in-depth check ensures caller validity.',
+          code: 'if (!user || user.role !== "admin")'
+        }
+      ],
+      edges: [
+        { from: 'top-api', to: 'top-guard', label: 'validated caller', verified: true },
+        { from: 'top-guard', to: 'top-sink', label: 'authorized call', verified: true },
+        { from: 'top-webhook', to: 'top-sink', label: 'UNPROTECTED BYPASS', danger: true },
+        { from: 'top-sink', to: 'top-fix', label: 'blocks exploit', verified: true }
+      ]
+    };
+
+    function render() {
+      const data = currentView === 'pipeline' ? pipelineData : topologyData;
+
+      nodesLayer.innerHTML = '';
+      data.nodes.forEach(n => {
+        const el = document.createElement('div');
+        el.className = `node ${n.cardClass || ''} ${selectedId === n.id ? 'selected' : ''}`;
+        el.id = n.id;
+        el.style.left = `${n.x}px`;
+        el.style.top = `${n.y}px`;
+
+        el.innerHTML = `
+          <div class="port input"></div>
+          <div class="port output"></div>
+          <div class="node-header">
+            <span class="node-cat">${n.cat}</span>
+            <div class="node-badge">
+              <span class="badge-dot ${n.dot}"></span>
+              <span>${n.badge}</span>
+            </div>
+          </div>
+          <div class="node-body">
+            <div class="node-title">${n.name}</div>
+            <div class="node-desc">${n.desc}</div>
+            <div class="node-code">${n.code}</div>
+          </div>
+          <div class="node-footer">
+            <span>id: ${n.id}</span>
+            <button class="node-action" onclick="event.stopPropagation(); inspect('${n.id}')">Inspect</button>
+          </div>
+        `;
+
+        el.addEventListener('click', () => inspect(n.id));
+        nodesLayer.appendChild(el);
+      });
+
+      requestAnimationFrame(renderEdges);
+    }
+
+    function renderEdges() {
+      const data = currentView === 'pipeline' ? pipelineData : topologyData;
+      edgesGroup.innerHTML = '';
+      labelsGroup.innerHTML = '';
+
+      data.edges.forEach(e => {
+        const fromEl = document.getElementById(e.from);
+        const toEl = document.getElementById(e.to);
+        if (!fromEl || !toEl) return;
+
+        const fromX = parseFloat(fromEl.style.left) + fromEl.offsetWidth;
+        const fromY = parseFloat(fromEl.style.top) + (fromEl.offsetHeight / 2);
+        const toX = parseFloat(toEl.style.left);
+        const toY = parseFloat(toEl.style.top) + (toEl.offsetHeight / 2);
+
+        const dx = Math.abs(toX - fromX);
+        const cx1 = fromX + Math.max(dx * 0.45, 30);
+        const cx2 = toX - Math.max(dx * 0.45, 30);
+
+        const d = `M ${fromX} ${fromY} C ${cx1} ${fromY}, ${cx2} ${toY}, ${toX} ${toY}`;
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', d);
+        path.setAttribute('class', `flow-edge ${e.danger ? 'danger' : e.verified ? 'verified' : ''}`);
+        path.setAttribute('marker-end', e.danger ? 'url(#arrow-danger)' : e.verified ? 'url(#arrow-verified)' : 'url(#arrow)');
+        edgesGroup.appendChild(path);
+
+        if (e.label) {
+          const midX = (fromX + toX) / 2;
+          const midY = (fromY + toY) / 2;
+
+          const badge = document.createElement('div');
+          badge.className = `edge-badge ${e.danger ? 'danger' : e.verified ? 'verified' : ''}`;
+          badge.style.left = `${midX}px`;
+          badge.style.top = `${midY}px`;
+          badge.textContent = e.label;
+          labelsGroup.appendChild(badge);
+        }
+      });
+    }
+
+    function switchView(view) {
+      currentView = view;
+      document.getElementById('btnLifecycle').classList.toggle('active', view === 'pipeline');
+      document.getElementById('btnTopology').classList.toggle('active', view === 'topology');
+      render();
+      fitView();
+    }
+
+    function inspect(id) {
+      selectedId = id;
+      const data = currentView === 'pipeline' ? pipelineData : topologyData;
+      const node = data.nodes.find(n => n.id === id);
+      if (!node) return;
+
+      document.querySelectorAll('.node').forEach(el => el.classList.remove('selected'));
+      const active = document.getElementById(id);
+      if (active) active.classList.add('selected');
+
+      document.getElementById('dNodeName').textContent = node.name;
+      document.getElementById('dNodeDesc').textContent = node.desc;
+      document.getElementById('drawerTitle').textContent = `${node.cat} Details`;
+      switchDrawerTab('inspector');
+      drawer.classList.add('open');
+    }
+
+    function closeDrawer() {
+      drawer.classList.remove('open');
+    }
+
+    function toggleDrawer() {
+      drawer.classList.toggle('open');
+    }
+
+    function switchDrawerTab(tab) {
+      const isTavily = tab === 'tavily';
+      document.getElementById('tabInspector').classList.toggle('active', !isTavily);
+      document.getElementById('tabTavily').classList.toggle('active', isTavily);
+      document.getElementById('bodyInspector').classList.toggle('hidden', isTavily);
+      document.getElementById('bodyTavily').classList.toggle('hidden', !isTavily);
+      document.getElementById('drawerTitle').textContent = isTavily ? 'Tavily Threat Intelligence' : 'Node Details';
+    }
+
+    function updateTransform() {
+      canvasWorld.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+      zoomText.textContent = `${Math.round(zoom * 100)}%`;
+    }
+
+    /* ==========================================================================
+       Screenshot / Region Selection & Floating "Ask Tavily" Logic
+       ========================================================================== */
+    let isSnipMode = false;
+    let isSelecting = false;
+    let snipStart = { x: 0, y: 0 };
+    let activeSelection = null;
+    let capturedSnippetData = null;
+
+    const btnSnip = document.getElementById('btnSnip');
+    const hudSnipBtn = document.getElementById('hudSnipBtn');
+    const snipBanner = document.getElementById('snipBanner');
+    const snipMarquee = document.getElementById('snipMarquee');
+    const snipDimensions = document.getElementById('snipDimensions');
+    const snipActionPill = document.getElementById('snipActionPill');
+
+    function toggleSnipMode() {
+      isSnipMode = !isSnipMode;
+      btnSnip?.classList.toggle('active', isSnipMode);
+      hudSnipBtn?.classList.toggle('active', isSnipMode);
+      viewport.classList.toggle('snip-mode', isSnipMode);
+      snipBanner?.classList.toggle('hidden', !isSnipMode);
+
+      if (!isSnipMode) {
+        cancelSnip();
+      }
+    }
+
+    function cancelSnip() {
+      activeSelection = null;
+      snipMarquee?.classList.add('hidden');
+      snipActionPill?.classList.add('hidden');
+    }
+
+    viewport.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.hud') || e.target.closest('.snip-action-pill')) return;
+
+      if (isSnipMode) {
+        // Start Region Selection
+        const rect = viewport.getBoundingClientRect();
+        snipStart = {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top
+        };
+        isSelecting = true;
+        activeSelection = null;
+        snipActionPill?.classList.add('hidden');
+
+        snipMarquee.style.left = `${snipStart.x}px`;
+        snipMarquee.style.top = `${snipStart.y}px`;
+        snipMarquee.style.width = '0px';
+        snipMarquee.style.height = '0px';
+        snipMarquee.classList.remove('hidden');
+        return;
+      }
+
+      // Default Canvas Pan
+      if (e.target.closest('.node')) return;
+      isDragging = true;
+      startX = e.clientX - panX;
+      startY = e.clientY - panY;
+      viewport.classList.add('grabbing');
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (isSnipMode && isSelecting) {
+        const rect = viewport.getBoundingClientRect();
+        const curX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+        const curY = Math.max(0, Math.min(e.clientY - rect.top, rect.height));
+
+        const left = Math.min(snipStart.x, curX);
+        const top = Math.min(snipStart.y, curY);
+        const width = Math.abs(curX - snipStart.x);
+        const height = Math.abs(curY - snipStart.y);
+
+        snipMarquee.style.left = `${left}px`;
+        snipMarquee.style.top = `${top}px`;
+        snipMarquee.style.width = `${width}px`;
+        snipMarquee.style.height = `${height}px`;
+        snipDimensions.textContent = `${Math.round(width)} × ${Math.round(height)}px`;
+        return;
+      }
+
+      if (isDragging) {
+        panX = e.clientX - startX;
+        panY = e.clientY - startY;
+        updateTransform();
+      }
+    });
+
+    window.addEventListener('mouseup', (e) => {
+      if (isSnipMode && isSelecting) {
+        isSelecting = false;
+        const rect = viewport.getBoundingClientRect();
+        const curX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+        const curY = Math.max(0, Math.min(e.clientY - rect.top, rect.height));
+
+        const left = Math.min(snipStart.x, curX);
+        const top = Math.min(snipStart.y, curY);
+        const width = Math.abs(curX - snipStart.x);
+        const height = Math.abs(curY - snipStart.y);
+
+        if (width < 25 || height < 25) {
+          // Click or too small selection
+          cancelSnip();
+          return;
+        }
+
+        activeSelection = { left, top, width, height };
+
+        // Position Floating "Ask Tavily" Action Pill
+        const pillLeft = Math.min(left + width - 110, rect.width - 150);
+        const pillTop = Math.min(top + height + 8, rect.height - 45);
+
+        snipActionPill.style.left = `${Math.max(10, pillLeft)}px`;
+        snipActionPill.style.top = `${pillTop}px`;
+        snipActionPill.classList.remove('hidden');
+        return;
+      }
+
+      if (isDragging) {
+        isDragging = false;
+        viewport.classList.remove('grabbing');
+      }
+    });
+
+    // Keyboard Shortcuts (S for Snip, Esc to cancel)
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.key === 's' || e.key === 'S') {
+        toggleSnipMode();
+      } else if (e.key === 'Escape') {
+        if (isSnipMode) toggleSnipMode();
+        else cancelSnip();
+      }
+    });
+
+    // Canvas Screenshot & Context Extractor
+    function captureRegionSnapshot(sel) {
+      const canvas = document.createElement('canvas');
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.max(sel.width * dpr, 200);
+      canvas.height = Math.max(sel.height * dpr, 100);
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+
+      // Background with subtle dot pattern
+      ctx.fillStyle = '#09090b';
+      ctx.fillRect(0, 0, sel.width, sel.height);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+      for (let x = 0; x < sel.width; x += 18) {
+        for (let y = 0; y < sel.height; y += 18) {
+          ctx.beginPath();
+          ctx.arc(x, y, 1, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      const data = currentView === 'pipeline' ? pipelineData : topologyData;
+      const intersectedNodes = [];
+
+      data.nodes.forEach(node => {
+        // Node viewport bounding box:
+        const nodeX = node.x * zoom + panX;
+        const nodeY = node.y * zoom + panY;
+        const nodeW = 250 * zoom;
+        const nodeH = 110 * zoom;
+
+        // Intersection with selection rectangle
+        if (
+          nodeX + nodeW >= sel.left &&
+          nodeX <= sel.left + sel.width &&
+          nodeY + nodeH >= sel.top &&
+          nodeY <= sel.top + sel.height
+        ) {
+          intersectedNodes.push(node);
+
+          // Draw minimalist node card on snapshot canvas
+          const relX = nodeX - sel.left;
+          const relY = nodeY - sel.top;
+
+          ctx.save();
+          ctx.fillStyle = '#121215';
+          ctx.strokeStyle = node.cardClass === 'danger-card' ? '#ef4444' : node.cardClass === 'verified-card' ? '#22c55e' : '#27272a';
+          ctx.lineWidth = 1.5;
+          drawRoundedRect(ctx, relX, relY, nodeW, nodeH, 6 * zoom);
+          ctx.fill();
+          ctx.stroke();
+
+          // Header
+          ctx.fillStyle = '#71717a';
+          ctx.font = `${Math.max(9 * zoom, 8)}px Inter, sans-serif`;
+          ctx.fillText(node.cat.toUpperCase(), relX + 10 * zoom, relY + 16 * zoom);
+
+          // Title
+          ctx.fillStyle = '#f4f4f5';
+          ctx.font = `bold ${Math.max(11 * zoom, 9)}px Inter, sans-serif`;
+          ctx.fillText(node.name, relX + 10 * zoom, relY + 34 * zoom);
+
+          // Code chip
+          ctx.fillStyle = '#09090b';
+          drawRoundedRect(ctx, relX + 8 * zoom, relY + 44 * zoom, nodeW - 16 * zoom, 22 * zoom, 4 * zoom);
+          ctx.fill();
+          ctx.fillStyle = '#a1a1aa';
+          ctx.font = `${Math.max(9 * zoom, 8)}px 'JetBrains Mono', monospace`;
+          ctx.fillText(node.code.substring(0, 32), relX + 12 * zoom, relY + 58 * zoom);
+
+          ctx.restore();
+        }
+      });
+
+      return {
+        dataUrl: canvas.toDataURL('image/png'),
+        nodes: intersectedNodes,
+        rect: sel
+      };
+    }
+
+    function drawRoundedRect(ctx, x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+
+    // Triggered when user clicks floating "Ask Tavily" button
+    function openTavilyWithSnip() {
+      if (!activeSelection) return;
+
+      // Code text selection
+      if (activeSelection.isCodeText) {
+        const selectedText = activeSelection.text;
+        const contextChipsEl = document.getElementById('tavilyContextChips');
+        if (contextChipsEl) {
+          contextChipsEl.innerHTML = `
+            <span style="font-family:'JetBrains Mono', monospace; background:#18181b; border:1px solid #27272a; padding:2px 6px; border-radius:3px; color:var(--text-muted);">
+              Code Selection (${selectedText.length} chars)
+            </span>
+          `;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 440;
+        canvas.height = 140;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#09090b';
+        ctx.fillRect(0, 0, 440, 140);
+        ctx.fillStyle = '#a1a1aa';
+        ctx.font = '11px "JetBrains Mono", monospace';
+        const lines = selectedText.split('\n').slice(0, 4);
+        lines.forEach((l, idx) => {
+          ctx.fillText(l.substring(0, 48), 16, 35 + idx * 26);
+        });
+
+        const imgEl = document.getElementById('tavilySnapshotImg');
+        if (imgEl) imgEl.src = canvas.toDataURL('image/png');
+
+        document.getElementById('tavilySnapshotDim').textContent = 'Selected Code Snapshot';
+        document.getElementById('tavilySnapshotCount').textContent = `${lines.length} lines`;
+
+        switchDrawerTab('tavily');
+        drawer.classList.add('open');
+        cancelSnip();
+
+        const queryInput = document.getElementById('tavilyQueryInput');
+        if (queryInput) {
+          queryInput.value = 'Analyze this code snippet for security vulnerabilities:';
+          queryInput.focus();
+        }
+        submitTavilyQuery();
+        return;
+      }
+
+      const snapshot = captureRegionSnapshot(activeSelection);
+      capturedSnippetData = snapshot;
+
+      // Populate Tavily Drawer Preview
+      const imgEl = document.getElementById('tavilySnapshotImg');
+      if (imgEl) imgEl.src = snapshot.dataUrl;
+
+      document.getElementById('tavilySnapshotDim').textContent = `${Math.round(activeSelection.width)} × ${Math.round(activeSelection.height)}px Snapshot`;
+      document.getElementById('tavilySnapshotCount').textContent = `${snapshot.nodes.length} nodes detected`;
+
+      // Update Context Tags
+      const contextChipsEl = document.getElementById('tavilyContextChips');
+      if (contextChipsEl) {
+        if (snapshot.nodes.length > 0) {
+          contextChipsEl.innerHTML = snapshot.nodes.map(n => `
+            <span style="font-family:'JetBrains Mono', monospace; background:#18181b; border:1px solid #27272a; padding:2px 6px; border-radius:3px; color:var(--text-muted);">
+              ${n.name} (${n.cat})
+            </span>
+          `).join('');
+        } else {
+          contextChipsEl.innerHTML = `
+            <span style="font-family:'JetBrains Mono', monospace; background:#18181b; padding:2px 6px; border-radius:3px; color:var(--text-dim);">
+              Graph Canvas Area
+            </span>
+          `;
+        }
+      }
+
+      // Open Drawer in Tavily Tab
+      switchDrawerTab('tavily');
+      drawer.classList.add('open');
+
+      // Clear Snip Selection & Mode
+      if (isSnipMode) toggleSnipMode();
+      else cancelSnip();
+
+      // Focus query input
+      const queryInput = document.getElementById('tavilyQueryInput');
+      if (queryInput) {
+        queryInput.focus();
+        queryInput.select();
+      }
+
+      // Automatically run query for developer convenience
+      submitTavilyQuery();
+    }
+
+    function askTavilyForCodeDiff() {
+      const nodeTitle = document.getElementById('dNodeName')?.textContent || 'refundTransaction()';
+
+      const contextChipsEl = document.getElementById('tavilyContextChips');
+      if (contextChipsEl) {
+        contextChipsEl.innerHTML = `
+          <span style="font-family:'JetBrains Mono', monospace; background:#18181b; border:1px solid #27272a; padding:2px 6px; border-radius:3px; color:var(--text-muted);">
+            ${nodeTitle}
+          </span>
+          <span style="font-family:'JetBrains Mono', monospace; background:rgba(56, 189, 248, 0.15); color:var(--accent); padding:2px 6px; border-radius:3px;">
+            Code Diff Snapshot
+          </span>
+        `;
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 440;
+      canvas.height = 140;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#09090b';
+      ctx.fillRect(0, 0, 440, 140);
+      ctx.fillStyle = '#22c55e';
+      ctx.font = '11px "JetBrains Mono", monospace';
+      ctx.fillText('+ if (!user || user.role !== "admin") {', 16, 45);
+      ctx.fillText('+   throw new Error("Unauthorized");', 16, 75);
+      ctx.fillText('+ }', 16, 105);
+
+      const imgEl = document.getElementById('tavilySnapshotImg');
+      if (imgEl) imgEl.src = canvas.toDataURL('image/png');
+
+      document.getElementById('tavilySnapshotDim').textContent = 'Code Snapshot (Diff)';
+      document.getElementById('tavilySnapshotCount').textContent = 'Source Code';
+
+      switchDrawerTab('tavily');
+      drawer.classList.add('open');
+
+      const queryInput = document.getElementById('tavilyQueryInput');
+      if (queryInput) {
+        queryInput.value = 'Is this code diff secure against CWE-306 and bypass exploits?';
+      }
+      submitTavilyQuery();
+    }
+
+    document.addEventListener('mouseup', (e) => {
+      if (isSnipMode) return;
+      const sel = window.getSelection();
+      const text = sel ? sel.toString().trim() : '';
+      if (text.length > 8 && !e.target.closest('#snipActionPill') && !e.target.closest('#tavilyQueryInput') && !e.target.closest('.hud')) {
+        const range = sel.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          snipActionPill.style.left = `${Math.min(rect.right, window.innerWidth - 130)}px`;
+          snipActionPill.style.top = `${Math.min(rect.bottom + 6, window.innerHeight - 45)}px`;
+          snipActionPill.classList.remove('hidden');
+
+          activeSelection = {
+            isCodeText: true,
+            text: text
+          };
+        }
+      }
+    });
+
+    function askTavilyWithPrompt(promptText) {
+      const queryInput = document.getElementById('tavilyQueryInput');
+      if (queryInput) {
+        queryInput.value = promptText;
+        submitTavilyQuery();
+      }
+    }
+
+    function submitTavilyQuery() {
+      const queryInput = document.getElementById('tavilyQueryInput');
+      const question = queryInput ? queryInput.value.trim() : 'Why did this happen?';
+      const statusBadge = document.getElementById('tavilyStatusBadge');
+      const responseText = document.getElementById('tavilyResponseText');
+      const sourcesEl = document.getElementById('tavilySources');
+
+      if (statusBadge) statusBadge.textContent = 'Querying live security intel...';
+      if (responseText) {
+        responseText.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; padding:12px 0; color:var(--accent);">
+            <span style="font-size:14px; animation:spin 1s linear infinite;">⚡</span>
+            <span>Synthesizing live Tavily security advisories & code graph evidence...</span>
+          </div>
+        `;
+      }
+      if (sourcesEl) sourcesEl.innerHTML = '';
+
+      const detectedNodes = capturedSnippetData ? capturedSnippetData.nodes : [];
+      const hasDanger = detectedNodes.some(n => n.cardClass === 'danger-card');
+      const nodeNames = detectedNodes.map(n => n.name).join(', ') || 'paymentService.js / webhook route';
+
+      setTimeout(() => {
+        if (statusBadge) statusBadge.textContent = 'Verified Intelligence';
+
+        let explanation = '';
+        if (question.toLowerCase().includes('why')) {
+          explanation = `### Root Cause Analysis (Tavily Security Intel)
+
+1. **Trust Boundary Breakdown**:
+   In \`paymentService.js\`, the function \`refundTransaction()\` was modified to remove internal caller validation under the assumption that upstream webhooks or controllers would handle authorization.
+
+2. **Graph Trace Evidence**:
+   AST Call Graph shows that \`POST /stripe-callback\` invokes \`refundTransaction()\` directly without verifying caller authorization or verifying the Stripe cryptographic webhook signature.
+
+3. **Impact**:
+   Any unauthenticated external actor can invoke the endpoint and trigger unauthorized financial transactions (CWE-306 / OWASP A01).`;
+        } else if (question.toLowerCase().includes('exploit') || question.toLowerCase().includes('attack')) {
+          explanation = `### Exploit Path & Attack Vector
+
+- **Step 1 (Recon)**: Attacker identifies exposed endpoint \`/stripe-callback\`.
+- **Step 2 (Bypass)**: Since \`router.post("/stripe-callback")\` has no signature verification and \`refundTransaction()\` lacks role check, an HTTP POST with arbitrary payload is executed.
+- **Step 3 (Financial Sink)**: Funds are refunded to attacker-controlled accounts without administrative approval.`;
+        } else if (question.toLowerCase().includes('cve') || question.toLowerCase().includes('advisory')) {
+          explanation = `### Relevant Security Advisories & CVEs
+
+- **CWE-306**: Missing Authentication for Critical Function
+- **CWE-862**: Missing Authorization
+- **OWASP Top 10 A01:2021**: Broken Access Control
+- **Stripe Security Advisory**: Webhook endpoints must enforce secret signature verification using \`stripe.webhooks.constructEvent()\`.`;
+        } else {
+          explanation = `### Remediation Strategy (Defense in Depth)
+
+1. Enforce validation directly at the function boundary in \`refundTransaction()\`:
+\`\`\`javascript
+if (!user || user.role !== 'admin') {
+  throw new Error('Unauthorized');
+}
+\`\`\`
+
+2. Verify cryptographic webhook signatures in \`webhooks.js\`:
+\`\`\`javascript
+const event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+\`\`\``;
+        }
+
+        if (responseText) responseText.innerHTML = explanation.replace(/### (.*?)\n/g, '<div style="font-weight:700; color:#f4f4f5; margin-bottom:6px; font-size:12px;">$1</div>').replace(/\n/g, '<br>');
+
+        if (sourcesEl) {
+          sourcesEl.innerHTML = `
+            <a href="https://cwe.mitre.org/data/definitions/306.html" target="_blank" class="source-pill">🔗 CWE-306 Mitre</a>
+            <a href="https://owasp.org/Top10/A01_2021-Broken_Access_Control/" target="_blank" class="source-pill">🔗 OWASP A01 Access Control</a>
+            <a href="https://stripe.com/docs/webhooks/signatures" target="_blank" class="source-pill">🔗 Stripe Webhook Signatures</a>
+          `;
+        }
+      }, 450);
+    }
+
+    viewport.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.06 : 0.94;
+      const newZoom = Math.min(Math.max(zoom * factor, 0.4), 2);
+
+      const rect = viewport.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      panX = mouseX - (mouseX - panX) * (newZoom / zoom);
+      panY = mouseY - (mouseY - panY) * (newZoom / zoom);
+      zoom = newZoom;
+
+      updateTransform();
+    }, { passive: false });
+
+    function zoomIn() {
+      zoom = Math.min(zoom * 1.15, 2);
+      updateTransform();
+    }
+
+    function zoomOut() {
+      zoom = Math.max(zoom * 0.85, 0.4);
+      updateTransform();
+    }
+
+    function resetZoom() {
+      zoom = 1;
+      panX = 40;
+      panY = 60;
+      updateTransform();
+    }
+
+    function fitView() {
+      zoom = 0.88;
+      panX = 30;
+      panY = 50;
+      updateTransform();
+    }
+
+    window.addEventListener('resize', renderEdges);
+    render();
+    updateTransform();
+  </script>
+</body>
+</html>

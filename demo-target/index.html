@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AstraCalc Pro • Quantum Precision Calculator & Math Suite</title>
+  <meta name="description" content="AstraCalc Pro is a next-generation scientific, programmer, graphing, and converter calculator with an ultra-premium glassmorphism UI, keyboard navigation, and interactive history.">
+  <meta name="theme-color" content="#090d16">
+  
+  <!-- Google Fonts: Outfit & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="dark-cyber">
+  <!-- Dynamic Ambient Glowing Orbs Background -->
+  <div class="ambient-glow orb-1" aria-hidden="true"></div>
+  <div class="ambient-glow orb-2" aria-hidden="true"></div>
+  <div class="ambient-glow orb-3" aria-hidden="true"></div>
+
+  <div class="app-container">
+    <!-- Top Navigation & Control Bar -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-logo">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="2" width="16" height="20" rx="3"></rect>
+            <line x1="8" y1="6" x2="16" y2="6"></line>
+            <line x1="16" y1="14" x2="16" y2="18"></line>
+            <path d="M16 10h.01"></path>
+            <path d="M12 10h.01"></path>
+            <path d="M8 10h.01"></path>
+            <path d="M12 14h.01"></path>
+            <path d="M8 14h.01"></path>
+            <path d="M12 18h.01"></path>
+            <path d="M8 18h.01"></path>
+          </svg>
+        </div>
+        <div class="brand-info">
+          <h1 class="brand-title">AstraCalc <span class="badge-pro">PRO</span></h1>
+          <p class="brand-subtitle">Quantum Precision Suite</p>
+        </div>
+      </div>
+
+      <!-- Mode Selector Pills -->
+      <nav class="mode-nav" aria-label="Calculator Modes">
+        <button class="mode-pill active" data-mode="standard" id="mode-standard">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+          Standard
+        </button>
+        <button class="mode-pill" data-mode="scientific" id="mode-scientific">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6 9l4 8 4-14 4 10 2-4"/></svg>
+          Scientific
+        </button>
+        <button class="mode-pill" data-mode="programmer" id="mode-programmer">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          Programmer
+        </button>
+        <button class="mode-pill" data-mode="graphing" id="mode-graphing">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="3" x2="3" y2="21"/><line x1="3" y1="21" x2="21" y2="21"/><path d="M3 15c4 0 4-8 8-8s4 12 8 12"/></svg>
+          Graphing
+        </button>
+        <button class="mode-pill" data-mode="converter" id="mode-converter">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+          Converter
+        </button>
+      </nav>
+
+      <!-- Utility Actions -->
+      <div class="top-actions">
+        <!-- Sound switch -->
+        <button class="icon-btn" id="btn-sound" title="Toggle Mechanical Audio Clicks" aria-label="Toggle Sound">
+          <svg class="icon-sound-on" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          <svg class="icon-sound-off hide" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+        </button>
+
+        <!-- Theme Picker -->
+        <div class="theme-menu-wrapper">
+          <button class="icon-btn" id="btn-theme" title="Change Theme" aria-label="Theme Selector">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          </button>
+          <div class="theme-dropdown" id="theme-dropdown">
+            <div class="theme-option active" data-theme-val="dark-cyber">
+              <span class="theme-swatch swatch-cyber"></span> Cyber Neon
+            </div>
+            <div class="theme-option" data-theme-val="deep-obsidian">
+              <span class="theme-swatch swatch-obsidian"></span> Deep Obsidian
+            </div>
+            <div class="theme-option" data-theme-val="emerald-pulse">
+              <span class="theme-swatch swatch-emerald"></span> Emerald Matrix
+            </div>
+            <div class="theme-option" data-theme-val="aurora-purple">
+              <span class="theme-swatch swatch-purple"></span> Aurora Violet
+            </div>
+          </div>
+        </div>
+
+        <!-- History Drawer Button -->
+        <button class="icon-btn has-badge" id="btn-toggle-history" title="Calculation History" aria-label="Toggle History">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span class="badge" id="history-badge">0</span>
+        </button>
+
+        <!-- Keyboard Shortcuts Help -->
+        <button class="icon-btn" id="btn-shortcuts" title="Keyboard Shortcuts" aria-label="Shortcuts">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="6" y2="8"/><line x1="10" y1="8" x2="10" y2="8"/><line x1="14" y1="8" x2="14" y2="8"/><line x1="18" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="18" y2="12"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace Layout -->
+    <main class="main-layout">
+      <!-- Left / Primary Calculator Body -->
+      <section class="calculator-card glass-panel" id="main-calc-panel">
+        
+        <!-- Screen / Display Section -->
+        <div class="screen-container">
+          <!-- Status Ribbon -->
+          <div class="screen-ribbon">
+            <div class="status-tags">
+              <span class="tag-indicator" id="angle-tag">DEG</span>
+              <span class="tag-indicator hide" id="hyp-tag">HYP</span>
+              <span class="tag-indicator hide" id="mem-tag">M</span>
+              <span class="tag-indicator" id="mode-tag">STD</span>
+            </div>
+            <div class="screen-actions">
+              <button class="screen-action-btn" id="btn-copy" title="Copy Current Result" aria-label="Copy Result">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <span>Copy</span>
+              </button>
+              <button class="screen-action-btn" id="btn-clear-entry" title="Clear Entry (Backspace)" aria-label="Backspace">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Live Running Expression -->
+          <div class="expression-line" id="expression-display" title="Active expression"></div>
+
+          <!-- Main Value Display -->
+          <div class="primary-value-wrapper">
+            <div class="primary-value" id="result-display" aria-live="polite">0</div>
+          </div>
+        </div>
+
+        <!-- =================== MODE 1 & 2: STANDARD / SCIENTIFIC =================== -->
+        <div class="calc-keypad-section" id="standard-scientific-view">
+          
+          <!-- Scientific Function Bar (Visible in Scientific Mode or Expandable) -->
+          <div class="scientific-panel" id="scientific-panel">
+            <div class="sci-row">
+              <button class="btn btn-sci" data-action="toggle-deg-rad" id="btn-deg-rad">DEG</button>
+              <button class="btn btn-sci" data-action="toggle-hyp" id="btn-hyp">hyp</button>
+              <button class="btn btn-sci" data-fn="sin">sin</button>
+              <button class="btn btn-sci" data-fn="cos">cos</button>
+              <button class="btn btn-sci" data-fn="tan">tan</button>
+              <button class="btn btn-sci" data-fn="log">log₁₀</button>
+            </div>
+            <div class="sci-row">
+              <button class="btn btn-sci" data-fn="asin">sin⁻¹</button>
+              <button class="btn btn-sci" data-fn="acos">cos⁻¹</button>
+              <button class="btn btn-sci" data-fn="atan">tan⁻¹</button>
+              <button class="btn btn-sci" data-fn="ln">ln</button>
+              <button class="btn btn-sci" data-fn="log2">log₂</button>
+              <button class="btn btn-sci" data-fn="fact">n!</button>
+            </div>
+            <div class="sci-row">
+              <button class="btn btn-sci" data-op="^">xʸ</button>
+              <button class="btn btn-sci" data-fn="sqr">x²</button>
+              <button class="btn btn-sci" data-fn="cube">x³</button>
+              <button class="btn btn-sci" data-fn="sqrt">√x</button>
+              <button class="btn btn-sci" data-fn="cbrt">∛x</button>
+              <button class="btn btn-sci" data-fn="recip">1/x</button>
+            </div>
+            <div class="sci-row">
+              <button class="btn btn-sci" data-const="pi">π</button>
+              <button class="btn btn-sci" data-const="e">e</button>
+              <button class="btn btn-sci" data-const="phi">φ</button>
+              <button class="btn btn-sci" data-fn="abs">|x|</button>
+              <button class="btn btn-sci" data-fn="exp10">10ˣ</button>
+              <button class="btn btn-sci" data-op="%">mod</button>
+            </div>
+          </div>
+
+          <!-- Memory Bar -->
+          <div class="memory-bar">
+            <button class="btn-mem" data-mem="MC" title="Memory Clear">MC</button>
+            <button class="btn-mem" data-mem="MR" title="Memory Recall">MR</button>
+            <button class="btn-mem" data-mem="M+" title="Memory Add">M+</button>
+            <button class="btn-mem" data-mem="M-" title="Memory Subtract">M−</button>
+            <button class="btn-mem" data-mem="MS" title="Memory Store">MS</button>
+          </div>
+
+          <!-- Primary Grid (Standard Digits and Core Operators) -->
+          <div class="keypad-grid">
+            <button class="btn btn-fn btn-danger" data-action="all-clear" id="key-ac">AC</button>
+            <button class="btn btn-fn" data-action="paren" data-val="(">(</button>
+            <button class="btn btn-fn" data-action="paren" data-val=")">)</button>
+            <button class="btn btn-op" data-op="÷">÷</button>
+
+            <button class="btn btn-num" data-num="7">7</button>
+            <button class="btn btn-num" data-num="8">8</button>
+            <button class="btn btn-num" data-num="9">9</button>
+            <button class="btn btn-op" data-op="×">×</button>
+
+            <button class="btn btn-num" data-num="4">4</button>
+            <button class="btn btn-num" data-num="5">5</button>
+            <button class="btn btn-num" data-num="6">6</button>
+            <button class="btn btn-op" data-op="-">−</button>
+
+            <button class="btn btn-num" data-num="1">1</button>
+            <button class="btn btn-num" data-num="2">2</button>
+            <button class="btn btn-num" data-num="3">3</button>
+            <button class="btn btn-op" data-op="+">+</button>
+
+     
+        </div>
+
+        <!-- =================== MODE 3: PROGRAMMER VIEW =================== -->
+        <div class="calc-programmer-view hide" id="programmer-view">
+          <!-- Radix / Base Rows -->
+          <div class="radix-container">
+            <div class="radix-row active" data-base="16" id="radix-hex">
+              <span class="radix-label">HEX</span>
+              <span class="radix-       <button class="btn btn-fn" data-action="negate">±</button>
+            <button class="btn btn-num" data-num="0">0</button>
+            <button class="btn btn-num" data-action="decimal">.</button>
+            <button class="btn btn-equals" data-action="calculate" id="key-equals">=</button>
+          </div>value" id="val-hex">0</span>
+            </div>
+            <div class="radix-row" data-base="10" id="radix-dec">
+              <span class="radix-label">DEC</span>
+              <span class="radix-value" id="val-dec">0</span>
+            </div>
+            <div class="radix-row" data-base="8" id="radix-oct">
+              <span class="radix-label">OCT</span>
+              <span class="radix-value" id="val-oct">0</span>
+            </div>
+            <div class="radix-row" data-base="2" id="radix-bin">
+              <span class="radix-label">BIN</span>
+              <span class="radix-value" id="val-bin">0000 0000 0000 0000</span>
+            </div>
+          </div>
+
+          <!-- Bit Length / Word Size Selector -->
+          <div class="word-size-bar">
+            <span class="word-title">Word Size:</span>
+            <div class="word-options">
+              <button class="btn-word active" data-word="64">QWORD (64-bit)</button>
+              <button class="btn-word" data-word="32">DWORD (32-bit)</button>
+              <button class="btn-word" data-word="16">WORD (16-bit)</button>
+              <button class="btn-word" data-word="8">BYTE (8-bit)</button>
+            </div>
+          </div>
+
+          <!-- Interactive 64-bit Matrix Grid -->
+          <div class="bit-board-wrapper">
+            <div class="bit-board-header">
+              <span>Interactive Bit Board (Click bit to toggle)</span>
+              <span class="bit-board-summary" id="bit-count-label">0 bits set</span>
+            </div>
+            <div class="bit-matrix" id="bit-matrix">
+              <!-- Dynamically generated 64 clickable bit blocks -->
+            </div>
+          </div>
+
+          <!-- Programmer Operations & Hex Digits Keypad -->
+          <div class="programmer-keypad">
+            <!-- Row of bitwise logic -->
+            <div class="prog-logic-row">
+              <button class="btn btn-prog-op" data-prog-op="AND">AND</button>
+              <button class="btn btn-prog-op" data-prog-op="OR">OR</button>
+              <button class="btn btn-prog-op" data-prog-op="XOR">XOR</button>
+              <button class="btn btn-prog-op" data-prog-op="NOT">NOT</button>
+              <button class="btn btn-prog-op" data-prog-op="LSH">LSH &lt;&lt;</button>
+              <button class="btn btn-prog-op" data-prog-op="RSH">RSH &gt;&gt;</button>
+            </div>
+
+            <!-- Hex buttons & standard digits -->
+            <div class="prog-digits-grid">
+              <button class="btn btn-hex" data-hex="A">A</button>
+              <button class="btn btn-hex" data-hex="B">B</button>
+              <button class="btn btn-hex" data-hex="C">C</button>
+              <button class="btn btn-prog-op" data-prog-op="ROL">RoL</button>
+              <button class="btn btn-fn btn-danger" data-action="all-clear">AC</button>
+              <button class="btn btn-op" data-op="÷">÷</button>
+
+              <button class="btn btn-hex" data-hex="D">D</button>
+              <button class="btn btn-hex" data-hex="E">E</button>
+              <button class="btn btn-hex" data-hex="F">F</button>
+              <button class="btn btn-prog-op" data-prog-op="ROR">RoR</button>
+              <button class="btn btn-fn" data-action="paren" data-val="(">(</button>
+              <button class="btn btn-fn" data-action="paren" data-val=")">)</button>
+
+              <button class="btn btn-num" data-num="7">7</button>
+              <button class="btn btn-num" data-num="8">8</button>
+              <button class="btn btn-num" data-num="9">9</button>
+              <button class="btn btn-op" data-op="×">×</button>
+              <button class="btn btn-prog-op" data-prog-op="NAND">NAND</button>
+              <button class="btn btn-prog-op" data-prog-op="NOR">NOR</button>
+
+              <button class="btn btn-num" data-num="4">4</button>
+              <button class="btn btn-num" data-num="5">5</button>
+              <button class="btn btn-num" data-num="6">6</button>
+              <button class="btn btn-op" data-op="-">−</button>
+              <button class="btn btn-prog-op" data-prog-op="XNOR">XNOR</button>
+              <button class="btn btn-prog-op" data-prog-op="%">MOD</button>
+
+              <button class="btn btn-num" data-num="1">1</button>
+              <button class="btn btn-num" data-num="2">2</button>
+              <button class="btn btn-num" data-num="3">3</button>
+              <button class="btn btn-op" data-op="+">+</button>
+              <button class="btn btn-num" data-num="0">0</button>
+              <button class="btn btn-equals" data-action="calculate">=</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- =================== MODE 4: GRAPHING VIEW =================== -->
+        <div class="calc-graphing-view hide" id="graphing-view">
+          <div class="graph-toolbar">
+            <div class="graph-formula-group">
+              <span class="math-label">f(x) =</span>
+              <input type="text" id="graph-formula-input" class="graph-input" value="sin(x) * cos(x/2)" placeholder="e.g. sin(x), x^2 - 4, 2*x + 1">
+              <button class="btn btn-accent btn-sm" id="btn-plot-graph">Plot Function</button>
+            </div>
+            
+            <div class="graph-presets">
+              <span class="presets-label">Presets:</span>
+              <button class="preset-chip" data-preset="sin(x)">sin(x)</button>
+              <button class="preset-chip" data-preset="x^2 - 4">x² - 4</button>
+              <button class="preset-chip" data-preset="cos(x) * x">x·cos(x)</button>
+              <button class="preset-chip" data-preset="1 / (1 + x^2)">Bell Curve</button>
+              <button class="preset-chip" data-preset="tan(x)">tan(x)</button>
+              <button class="preset-chip" data-preset="abs(x) - 2">|x| - 2</button>
+            </div>
+          </div>
+
+          <div class="graph-canvas-container">
+            <canvas id="function-canvas"></canvas>
+            <div class="graph-overlay-info" id="graph-coord-box">
+              <span class="coord-label">Pointer:</span> <span id="graph-coords">x: 0.00, y: 0.00</span>
+            </div>
+            <div class="graph-controls-floating">
+              <button class="graph-float-btn" id="graph-zoom-in" title="Zoom In">+</button>
+              <button class="graph-float-btn" id="graph-zoom-out" title="Zoom Out">−</button>
+              <button class="graph-float-btn" id="graph-reset" title="Reset View">⟲</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- =================== MODE 5: UNIT CONVERTER VIEW =================== -->
+        <div class="calc-converter-view hide" id="converter-view">
+          <div class="converter-categories" id="converter-cat-tabs">
+            <button class="cat-pill active" data-cat="length">Length</button>
+            <button class="cat-pill" data-cat="mass">Weight / Mass</button>
+            <button class="cat-pill" data-cat="temperature">Temperature</button>
+            <button class="cat-pill" data-cat="speed">Speed</button>
+            <button class="cat-pill" data-cat="data">Data Storage</button>
+            <button class="cat-pill" data-cat="time">Time</button>
+            <button class="cat-pill" data-cat="area">Area</button>
+          </div>
+
+          <div class="converter-box-grid">
+            <!-- Source unit card -->
+            <div class="conv-card">
+              <label for="conv-from-val" class="conv-label">From</label>
+              <input type="number" id="conv-from-val" class="conv-input" value="1" step="any">
+              <select id="conv-from-unit" class="conv-select"></select>
+            </div>
+
+            <!-- Swap button -->
+            <button class="conv-swap-btn" id="btn-conv-swap" title="Swap Units" aria-label="Swap Units">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+            </button>
+
+            <!-- Destination unit card -->
+            <div class="conv-card">
+              <label for="conv-to-val" class="conv-label">To</label>
+              <input type="number" id="conv-to-val" class="conv-input" value="0" step="any">
+              <select id="conv-to-unit" class="conv-select"></select>
+            </div>
+          </div>
+
+          <!-- Formula & Detail Pill -->
+          <div class="converter-formula-card" id="conv-formula-info">
+            <span class="conv-formula-tag">Conversion Rate</span>
+            <p class="conv-formula-text" id="conv-formula-text">1 Meter = 3.28084 Feet</p>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Right Side: History Drawer / Workspace Notes -->
+      <aside class="history-sidebar glass-panel" id="history-sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-title-group">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <h2>Session History</h2>
+          </div>
+          <div class="sidebar-actions">
+            <button class="icon-btn-sm" id="btn-export-history" title="Export History as Text">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+            <button class="icon-btn-sm btn-danger-text" id="btn-clear-history" title="Clear All History">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+            <button class="icon-btn-sm mobile-close" id="btn-close-history" title="Close Sidebar">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="history-list" id="history-items-container">
+          <!-- Populated via Javascript -->
+          <div class="empty-history-notice">
+            <div class="empty-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <p class="empty-title">No calculations yet</p>
+            <p class="empty-desc">Your results and operations will appear here for quick recall.</p>
+          </div>
+        </div>
+
+        <!-- Quick Memory Inspector -->
+        <div class="memory-inspector">
+          <span class="mem-label">Stored Memory (M):</span>
+          <span class="mem-value" id="inspector-mem-val">0</span>
+        </div>
+      </aside>
+    </main>
+
+  <!-- Intentionally flawed training surface for security/code-review exercises. -->
+  <aside class="issue-lab" aria-labelledby="issue-lab-title">
+    <h2 id="issue-lab-title">Security &amp; Bug Lab</h2>
+    <p>Use this panel to practice spotting unsafe DOM rendering, client-side secrets, and common JavaScript bugs.</p>
+    <label for="lab-message">Preview message</label>
+    <input id="lab-message" type="text" value="Hello, reviewer!" maxlength="120">
+    <button id="lab-preview" type="button">Preview message</button>
+    <output id="lab-output" aria-live="polite"></output>
+  </aside>
+
+    <!-- Keyboard Shortcuts Modal -->
+    <div class="modal-backdrop hide" id="modal-shortcuts">
+      <div class="modal-box glass-panel">
+        <div class="modal-header">
+          <h3>⚡ Keyboard Navigation & Shortcuts</h3>
+          <button class="modal-close-btn" id="btn-close-modal">&times;</button>
+        </div>
+        <div class="modal-content">
+          <div class="shortcut-grid">
+            <div class="shortcut-item"><kbd>0</kbd>–<kbd>9</kbd> <span>Enter Numbers</span></div>
+            <div class="shortcut-item"><kbd>+</kbd> <kbd>-</kbd> <kbd>*</kbd> <kbd>/</kbd> <span>Basic Math Operators</span></div>
+            <div class="shortcut-item"><kbd>Enter</kbd> or <kbd>=</kbd> <span>Calculate Result</span></div>
+            <div class="shortcut-item"><kbd>Backspace</kbd> <span>Delete last character</span></div>
+            <div class="shortcut-item"><kbd>Esc</kbd> or <kbd>c</kbd> <span>Clear All (AC)</span></div>
+            <div class="shortcut-item"><kbd>(</kbd> <kbd>)</kbd> <span>Parentheses grouping</span></div>
+            <div class="shortcut-item"><kbd>^</kbd> <span>Power (Exponent)</span></div>
+            <div class="shortcut-item"><kbd>%</kbd> <span>Percentage / Modulo</span></div>
+            <div class="shortcut-item"><kbd>m</kbd> <span>Toggle Scientific Mode</span></div>
+            <div class="shortcut-item"><kbd>p</kbd> <span>Toggle Programmer Mode</span></div>
+            <div class="shortcut-item"><kbd>g</kbd> <span>Toggle Graphing Mode</span></div>
+            <div class="shortcut-item"><kbd>h</kbd> <span>Toggle History Drawer</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Toast Element -->
+    <div class="toast-notification hide" id="toast-notify">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+      <span id="toast-text">Copied to clipboard</span>
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>AstraCalc Pro Suite &bull; Crafted with Vanilla HTML5, CSS3 Glassmorphism &amp; Modern JS &bull; High Precision Float &amp; 64-bit Bitwise</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+  <!-- Deliberately vulnerable examples; do not copy into production code. -->
+  <script src="demo-issues.js"></script>
+</body>
+</html>
